@@ -5,10 +5,14 @@ import com.ctrip.ferriswheel.common.Sheet;
 import com.ctrip.ferriswheel.common.Workbook;
 import com.ctrip.ferriswheel.common.action.Action;
 import com.ctrip.ferriswheel.common.chart.Chart;
+import com.ctrip.ferriswheel.common.form.Form;
 import com.ctrip.ferriswheel.common.table.Table;
 import com.ctrip.ferriswheel.common.text.Text;
+import com.ctrip.ferriswheel.common.variant.Variant;
 import com.ctrip.ferriswheel.core.action.*;
+import com.ctrip.ferriswheel.core.asset.DefaultForm;
 import com.ctrip.ferriswheel.core.asset.DefaultQueryAutomaton;
+import com.ctrip.ferriswheel.core.asset.DefaultSheet;
 import com.ctrip.ferriswheel.core.asset.ReviseCollector;
 import com.ctrip.ferriswheel.core.bean.ChartData;
 import com.ctrip.ferriswheel.core.bean.DefaultEnvironment;
@@ -29,7 +33,11 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.Reader;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+
+import static com.ctrip.ferriswheel.proto.util.PbHelper.toValue;
 
 public class WorkbookRequestHandler extends TextWebSocketHandler implements RequestHandler {
     private static final Logger LOG = LoggerFactory.getLogger(WorkbookRequestHandler.class);
@@ -64,9 +72,9 @@ public class WorkbookRequestHandler extends TextWebSocketHandler implements Requ
             // CHARTCONSULT(8):
             new ChartConsultHandler(),
             // ERASECOLUMNS(9):
-            new EraseColumnsHandler(),
+            new EraseCellsHandler(),
             // ERASEROWS(10):
-            new EraseRowsHandler(),
+            new DummyHandler(),
             // FILLUP(11):
             new FillUpHandler(),
             // FILLRIGHT(12):
@@ -119,6 +127,12 @@ public class WorkbookRequestHandler extends TextWebSocketHandler implements Requ
             new DummyHandler(),
             // SetCellsFormat(36)
             new SetCellsFormatHandler(),
+            // AddForm(37)
+            new AddFormHandler(),
+            // UpdateForm(38)
+            new UpdateFormHandler(),
+            // SubmitForm(39)
+            new SubmitFormHandler(),
     };
 
     @Override
@@ -128,7 +142,7 @@ public class WorkbookRequestHandler extends TextWebSocketHandler implements Requ
 
         try { // parse request
             com.ctrip.ferriswheel.proto.v1.EditRequest.Builder requestBuilder = com.ctrip.ferriswheel.proto.v1.EditRequest.newBuilder();
-            JsonFormat.parser().merge(message.getPayload(), requestBuilder);
+            JsonFormat.parser().ignoringUnknownFields().merge(message.getPayload(), requestBuilder);
             request = requestBuilder.build();
         } catch (Throwable t) {
             LOG.warn("Failed to parse request.", t);
@@ -164,7 +178,7 @@ public class WorkbookRequestHandler extends TextWebSocketHandler implements Requ
     @Override
     public com.ctrip.ferriswheel.proto.v1.EditResponse handle(com.ctrip.ferriswheel.proto.v1.EditRequest request,
                                                               WorkContext workContext) {
-        if (request.getTxId() < 0 || workContext == null) {
+        if (request.getTxId() < -1 || workContext == null) {
             throw new IllegalArgumentException();
         }
         com.ctrip.ferriswheel.proto.v1.Action action = request.getAction();
@@ -232,7 +246,7 @@ public class WorkbookRequestHandler extends TextWebSocketHandler implements Requ
                 if (action instanceof AddChart) {
                     AddChart addChart = (AddChart) action;
                     Sheet s = workbook.getSheet(addChart.getSheetName());
-                    Chart c = s.getAsset(addChart.getChartName());
+                    Chart c = s.getAsset(addChart.getChartData().getName());
                     addChart.setChartData(c);
 
                 } else if (action instanceof UpdateChart) {
@@ -244,7 +258,7 @@ public class WorkbookRequestHandler extends TextWebSocketHandler implements Requ
                 } else if (action instanceof AddTable) {
                     AddTable addTable = (AddTable) action;
                     Sheet s = workbook.getSheet(addTable.getSheetName());
-                    Table t = s.getAsset(addTable.getTableName());
+                    Table t = s.getAsset(addTable.getTableData().getName());
                     addTable.setTableData(t);
                 }
             }
@@ -383,25 +397,17 @@ public class WorkbookRequestHandler extends TextWebSocketHandler implements Requ
         }
     }
 
-    class EraseColumnsHandler extends WorkbookActionHandler {
+    class EraseCellsHandler extends WorkbookActionHandler {
 
         @Override
         public void handle(long txId, com.ctrip.ferriswheel.proto.v1.Action action, Workbook workbook) {
-            com.ctrip.ferriswheel.proto.v1.EraseColumns eraseColumns = action.getEraseColumns();
-            ((Table) workbook.getSheet(eraseColumns.getSheetName())
-                    .getAsset(eraseColumns.getTableName()))
-                    .eraseColumns(eraseColumns.getColumnIndex(), eraseColumns.getNColumns());
-        }
-    }
-
-    class EraseRowsHandler extends WorkbookActionHandler {
-
-        @Override
-        public void handle(long txId, com.ctrip.ferriswheel.proto.v1.Action action, Workbook workbook) {
-            com.ctrip.ferriswheel.proto.v1.EraseRows eraseRows = action.getEraseRows();
-            ((Table) workbook.getSheet(eraseRows.getSheetName())
-                    .getAsset(eraseRows.getTableName()))
-                    .eraseRows(eraseRows.getRowIndex(), eraseRows.getNRows());
+            com.ctrip.ferriswheel.proto.v1.EraseCells eraseCells = action.getEraseCells();
+            ((Table) workbook.getSheet(eraseCells.getSheetName())
+                    .getAsset(eraseCells.getTableName()))
+                    .eraseCells(eraseCells.getTop(),
+                            eraseCells.getRight(),
+                            eraseCells.getBottom(),
+                            eraseCells.getLeft());
         }
     }
 
@@ -468,7 +474,7 @@ public class WorkbookRequestHandler extends TextWebSocketHandler implements Requ
             com.ctrip.ferriswheel.proto.v1.InsertColumns insertColumns = action.getInsertColumns();
             ((Table) workbook.getSheet(insertColumns.getSheetName())
                     .getAsset(insertColumns.getTableName()))
-                    .insertColumns(insertColumns.getColumnIndex(), insertColumns.getNColumns());
+                    .addColumns(insertColumns.getColumnIndex(), insertColumns.getNColumns());
         }
     }
 
@@ -479,7 +485,7 @@ public class WorkbookRequestHandler extends TextWebSocketHandler implements Requ
             com.ctrip.ferriswheel.proto.v1.InsertRows insertRows = action.getInsertRows();
             ((Table) workbook.getSheet(insertRows.getSheetName())
                     .getAsset(insertRows.getTableName()))
-                    .insertRows(insertRows.getRowIndex(), insertRows.getNRows());
+                    .addRows(insertRows.getRowIndex(), insertRows.getNRows());
         }
     }
 
@@ -723,6 +729,38 @@ public class WorkbookRequestHandler extends TextWebSocketHandler implements Requ
                             setCellsFormat.getNRows(),
                             setCellsFormat.getNColumns(),
                             setCellsFormat.getFormat());
+        }
+    }
+
+    class AddFormHandler extends WorkbookActionHandler {
+        @Override
+        void handle(long txId, com.ctrip.ferriswheel.proto.v1.Action action, Workbook workbook) {
+            com.ctrip.ferriswheel.proto.v1.AddForm addForm = action.getAddForm();
+            workbook.getSheet(addForm.getSheetName())
+                    .addAsset(Form.class, PbHelper.bean(addForm.getForm()));
+        }
+    }
+
+    class UpdateFormHandler extends WorkbookActionHandler {
+        @Override
+        void handle(long txId, com.ctrip.ferriswheel.proto.v1.Action action, Workbook workbook) {
+            com.ctrip.ferriswheel.proto.v1.UpdateForm updateForm = action.getUpdateForm();
+            ((DefaultSheet) workbook.getSheet(updateForm.getSheetName()))
+                    .updateForm(PbHelper.bean(updateForm.getForm()));
+        }
+    }
+
+    class SubmitFormHandler extends WorkbookActionHandler {
+        @Override
+        void handle(long txId, com.ctrip.ferriswheel.proto.v1.Action action, Workbook workbook) {
+            com.ctrip.ferriswheel.proto.v1.SubmitForm submitForm = action.getSubmitForm();
+            Map<String, Variant> params = new LinkedHashMap<>(submitForm.getParamsCount());
+            for (com.ctrip.ferriswheel.proto.v1.Parameter item : submitForm.getParamsList()) {
+                params.put(item.getName(), toValue(item.getValue()));
+            }
+            ((DefaultForm) workbook.getSheet(submitForm.getSheetName())
+                    .getAsset(submitForm.getFormName()))
+                    .submit(params);
         }
     }
 

@@ -114,7 +114,7 @@ class Values {
         }
     }
 
-    public static withType(type: VariantType, value: any, formula?: string) {
+    public static withType(type: VariantType, value: any, formula?: string): UnionValue {
         switch (type) {
             case VariantType.ERROR:
                 return this.error(value, formula);
@@ -144,8 +144,9 @@ class Values {
             return this.blank();
         }
 
-        const formulaString = (typeof input.formulaString === 'string') ?
-            input.formulaString : undefined;
+        const formulaString = (
+            typeof input.formulaString === 'string' && input.formulaString !== ""
+        ) ? input.formulaString : undefined;
 
         if (typeof input.error === 'string') {
             return this.error(input.error as ErrorCode, formulaString);

@@ -1,77 +1,92 @@
-import * as React from 'react';
+import * as React from "react";
+import ValueChange from "./ValueChange";
+import classnames from "classnames";
+import "./EditBox.css";
 
 export interface EditBoxProps extends React.ClassAttributes<EditBox> {
     value: string;
+    /**
+     * Initial update value, treated as non-committed, and purposed for eidt suggestion.
+     */
+    initialUpdate?: string; // Initial update
     id?: string;
     name?: string;
     placeholder?: string;
     multiline?: boolean;
     className?: string;
     style?: React.CSSProperties;
+    readOnly?: boolean;
     disabled?: boolean;
-    focused?: boolean;
+    focusByDefault?: boolean;
     selectOnFocus?: boolean;
+    forceCommitOnEnter?: boolean;
+    autoExpand?: boolean;
     afterBeginEdit?: () => void;
-    beforeChange?: (change: EditBoxChange) => boolean;
-    afterChange?: (change: EditBoxChange) => void;
+    beforeChange?: (change: ValueChange<string>) => boolean;
+    afterChange?: (change: ValueChange<string>) => void;
     afterEndEdit?: () => void;
-}
-
-export interface EditBoxChange {
-    id?: string,
-    name?: string,
-    originValue: string,
-    prevValue: string,
-    nextValue: string,
-    type: 'edit' | 'commit' | 'rollback',
+    onClick?: (event: React.MouseEvent<HTMLElement>) => void;
 }
 
 interface EditBoxState {
-    currentValue: string,
+    originValue: string;
+    currentValue: string;
 }
 
 class EditBox extends React.Component<EditBoxProps, EditBoxState> {
+    protected textareaRef = React.createRef<HTMLTextAreaElement>();
 
-    protected inputElement: React.RefObject<HTMLInputElement>;
-    protected textareaElement: React.RefObject<HTMLTextAreaElement>;
+    protected static getDerivedStateFromProps(nextProps: EditBoxProps, prevState: EditBoxState) {
+        if (nextProps.value === prevState.originValue) {
+            return null;
+        }
+        return {
+            originValue: nextProps.value,
+            currentValue: nextProps.value,
+        };
+    }
 
     constructor(props: EditBoxProps) {
         super(props);
 
         const value = this.props.value;
+        const initialUpdate = this.props.initialUpdate;
         this.state = {
-            currentValue: value,
+            originValue: value,
+            currentValue: typeof initialUpdate === "string" ? initialUpdate : value,
         }
-
-        this.inputElement = React.createRef();
-        this.textareaElement = React.createRef();
 
         this.handleFocus = this.handleFocus.bind(this);
         this.handleChange = this.handleChange.bind(this);
         this.handleKeyDown = this.handleKeyDown.bind(this);
         this.handleBlur = this.handleBlur.bind(this);
+        this.handleClick = this.handleClick.bind(this);
     }
 
     public componentDidMount() {
-        if (this.props.focused) {
+        if (this.props.focusByDefault) {
             this.focus();
+        }
+        if (this.textareaRef.current) {
+            this.resizeIfNeeded(this.textareaRef.current);
         }
     }
 
     public componentDidUpdate(prevProps: EditBoxProps, prevState: EditBoxState) {
-        if (prevProps.value !== this.props.value) {
-            this.setState({
-                currentValue: this.props.value,
-            });
+        if (prevState.currentValue !== this.state.currentValue) {
+            if (this.textareaRef.current) {
+                this.resizeIfNeeded(this.textareaRef.current);
+            }
         }
     }
 
     protected handleFocus(event: React.FocusEvent) {
+        if (this.props.readOnly || this.props.disabled) {
+            return;
+        }
         if (this.props.selectOnFocus) {
-            if (this.props.multiline && this.textareaElement.current) {
-                this.textareaElement.current.select();
-            } else if (!this.props.multiline && this.inputElement.current) {
-                this.inputElement.current.select();
+            if (this.textareaRef.current) {
+                this.textareaRef.current.select();
             }
         }
         if (typeof this.props.afterBeginEdit !== 'undefined') {
@@ -79,22 +94,43 @@ class EditBox extends React.Component<EditBoxProps, EditBoxState> {
         }
     }
 
-    protected handleChange(event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) {
-        const change: EditBoxChange = {
+    protected handleChange(event: React.ChangeEvent<HTMLTextAreaElement>) {
+        const target = event.currentTarget;
+        this.resizeIfNeeded(target);
+        this.updateValue(target.value);
+    }
+
+    protected resizeIfNeeded(target: HTMLTextAreaElement) {
+        if (this.props.autoExpand) {
+            target.style.removeProperty("height");
+            target.style.height = target.scrollHeight + "px";
+
+        } else { // no auto expand
+            if (!this.props.multiline) {
+                const computedStyle = window.getComputedStyle(target);
+                const lineHeight = target.clientHeight
+                    - parseFloat(computedStyle.getPropertyValue("padding-top"))
+                    - parseFloat(computedStyle.getPropertyValue("padding-bottom"));
+                target.style.lineHeight = lineHeight + "px";
+            }
+        }
+    }
+
+    public updateValue(newValue: string) {
+        const change: ValueChange<string> = {
             id: this.props.id,
             name: this.props.name,
-            originValue: this.props.value,
-            prevValue: this.state.currentValue,
-            nextValue: event.target.value,
+            fromValue: this.state.currentValue,
+            toValue: newValue,
             type: 'edit',
         }
         let accepted = true;
         if (typeof this.props.beforeChange !== 'undefined') {
             accepted = this.props.beforeChange(change);
         }
-        if (accepted && change.prevValue !== change.nextValue) {
+        if (accepted && change.fromValue !== change.toValue) {
             this.setState({
-                currentValue: change.nextValue,
+                currentValue: change.toValue,
             });
             if (typeof this.props.afterChange !== 'undefined') {
                 this.props.afterChange(change);
@@ -102,16 +138,38 @@ class EditBox extends React.Component<EditBoxProps, EditBoxState> {
         }
     }
 
-    protected handleKeyDown(event: React.KeyboardEvent) {
-        if (event.key === 'Enter'
-            && (!this.props.multiline || event.ctrlKey || event.metaKey)) {
-            this.commit();
+    public getCurrentValue() {
+        return this.state.currentValue;
+    }
+
+    protected handleKeyDown(event: React.KeyboardEvent<HTMLTextAreaElement>) {
+        const target = event.currentTarget;
+        if (event.key === 'Enter') {
+            if (this.props.multiline && this.props.forceCommitOnEnter && event.altKey) {
+                const start = target.selectionStart;
+                const stop = target.selectionEnd;
+                if (start === null || stop === null) {
+                    return;
+                }
+                target.setRangeText("\n", start, stop, "end");
+                this.resizeIfNeeded(target);
+                this.updateValue(target.value);
+
+            } else if (!this.props.multiline || this.props.forceCommitOnEnter || event.ctrlKey || event.metaKey) {
+                event.preventDefault();
+                this.commit();
+            }
+
         } else if (event.key === 'Escape') {
+            event.nativeEvent.stopImmediatePropagation();
             this.rollback();
         }
     }
 
     protected handleBlur(event: React.FocusEvent) {
+        if (this.props.readOnly || this.props.disabled) {
+            return;
+        }
         if (this.props.value !== this.state.currentValue) {
             if (!this.commit()) {
                 this.rollback();
@@ -128,13 +186,18 @@ class EditBox extends React.Component<EditBoxProps, EditBoxState> {
         }
     }
 
+    protected handleClick(event: React.MouseEvent<HTMLElement>) {
+        if (typeof this.props.onClick !== "undefined") {
+            this.props.onClick(event);
+        }
+    }
+
     public commit() {
-        const change: EditBoxChange = {
+        const change: ValueChange<string> = {
             id: this.props.id,
             name: this.props.name,
-            originValue: this.props.value,
-            prevValue: this.state.currentValue,
-            nextValue: this.state.currentValue,
+            fromValue: this.props.value,
+            toValue: this.state.currentValue,
             type: 'commit',
         }
         let accepted = true;
@@ -158,12 +221,11 @@ class EditBox extends React.Component<EditBoxProps, EditBoxState> {
     }
 
     public rollback() {
-        const change: EditBoxChange = {
+        const change: ValueChange<string> = {
             id: this.props.id,
             name: this.props.name,
-            originValue: this.props.value,
-            prevValue: this.state.currentValue,
-            nextValue: this.state.currentValue,
+            fromValue: this.state.currentValue,
+            toValue: this.props.value,
             type: 'rollback',
         }
         let accepted = true;
@@ -173,9 +235,9 @@ class EditBox extends React.Component<EditBoxProps, EditBoxState> {
         if (!accepted) {
             return;
         }
-        if (this.state.currentValue !== change.originValue) {
+        if (this.state.currentValue !== change.toValue) {
             this.setState({
-                currentValue: change.originValue,
+                currentValue: change.toValue,
             });
         }
         // maybe nothing changed, but the rollback action itself 
@@ -186,38 +248,37 @@ class EditBox extends React.Component<EditBoxProps, EditBoxState> {
     }
 
     public focus() {
-        if (this.props.multiline) {
-            if (this.textareaElement.current !== null) {
-                this.textareaElement.current.focus();
-            }
-
-        } else {
-            if (this.inputElement.current !== null) {
-                this.inputElement.current.focus();
-            }
+        if (this.textareaRef.current) {
+            this.textareaRef.current.focus();
         }
     }
 
     public render() {
-        const commonProps = {
-            value: this.state.currentValue,
-            id: this.props.id,
-            name: this.props.name,
-            placeholder: this.props.placeholder,
-            className: this.props.className,
-            style: this.props.style,
-            onFocus: this.handleFocus,
-            onChange: this.handleChange,
-            onKeyDown: this.handleKeyDown,
-            onBlur: this.handleBlur,
-            disabled: this.props.disabled,
-        };
+        const className = classnames(
+            "edit-box",
+            this.props.className,
+            this.props.multiline ? "multiline" : "singleline",
+            { "auto-expand": this.props.autoExpand }
+        );
 
-        if (this.props.multiline) {
-            return <textarea ref={this.textareaElement} {...commonProps} />;
-        } else {
-            return <input type="text" ref={this.inputElement} {...commonProps} />;
-        }
+        return (
+            <textarea
+                ref={this.textareaRef}
+                value={this.state.currentValue}
+                id={this.props.id}
+                name={this.props.name}
+                placeholder={this.props.placeholder}
+                className={className}
+                style={this.props.style}
+                rows={this.props.multiline ? undefined : 1}
+                onFocus={this.handleFocus}
+                onChange={this.handleChange}
+                onKeyDown={this.handleKeyDown}
+                onBlur={this.handleBlur}
+                onClick={this.handleClick}
+                readOnly={this.props.readOnly}
+                disabled={this.props.disabled} />
+        );
     }
 }
 

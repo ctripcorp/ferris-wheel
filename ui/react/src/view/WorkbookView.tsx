@@ -21,8 +21,9 @@ import classnames from "classnames";
 import './WorkbookView.css';
 
 interface WorkbookViewProps extends SharedViewProps<WorkbookView> {
-    workbook: Workbook,
-    className?: string,
+    workbook: Workbook;
+    className?: string;
+    defaultSheet?: string;
 }
 
 interface WorkbookViewState {
@@ -40,12 +41,6 @@ class WorkbookView extends React.Component<WorkbookViewProps, WorkbookViewState>
     constructor(props: WorkbookViewProps) {
         super(props);
 
-        this.state = {
-            selected: props.workbook.sheets[0],
-            lastSelectedSheetAsset: new Map<Sheet, SheetAsset>(),
-        };
-        this.sendSelectSheetAction(props.workbook.sheets[0]);
-
         this.onApplyAction = this.onApplyAction.bind(this);
         this.getTabItemLabel = this.getTabItemLabel.bind(this);
         this.handleClickAddSheet = this.handleClickAddSheet.bind(this);
@@ -55,17 +50,35 @@ class WorkbookView extends React.Component<WorkbookViewProps, WorkbookViewState>
         this.handleMoveSheet = this.handleMoveSheet.bind(this);
         this.handleSelectSheet = this.handleSelectSheet.bind(this);
         this.handleSheetAction = this.handleSheetAction.bind(this);
+
+        this.state = {
+            selected: this.determineInitiallySelectedSheet(props),
+            lastSelectedSheetAsset: new Map<Sheet, SheetAsset>(),
+        };
+        if (typeof this.props.herald !== 'undefined') {
+            this.props.herald.subscribe(this.onApplyAction);
+        }
+        this.sendSelectSheetAction(this.state.selected);
+    }
+
+    protected determineInitiallySelectedSheet(props: WorkbookViewProps): Sheet | undefined {
+        let selected = undefined;
+        if (typeof props.defaultSheet !== "undefined") {
+            for (let i = 0; i < props.workbook.sheets.length; i++) {
+                if (props.defaultSheet === props.workbook.sheets[i].name) {
+                    selected = props.workbook.sheets[i];
+                }
+            }
+        }
+        if (selected === undefined && props.workbook.sheets.length > 0) {
+            selected = props.workbook.sheets[0];
+        }
+        return selected;
     }
 
     public componentDidUpdate(prevProps: WorkbookViewProps) {
         if (this.props.workbook !== prevProps.workbook) {
-            this.onSelectSheet(this.props.workbook.sheets[0]);
-        }
-    }
-
-    public componentDidMount() {
-        if (typeof this.props.herald !== 'undefined') {
-            this.props.herald.subscribe(this.onApplyAction);
+            this.onSelectSheet(this.determineInitiallySelectedSheet(this.props));
         }
     }
 
@@ -327,6 +340,13 @@ class WorkbookView extends React.Component<WorkbookViewProps, WorkbookViewState>
             this.props.className);
 
         const sheets = this.props.workbook.sheets;
+        let defaultSheetIndex = undefined;
+        for (let i = 0; i < sheets.length; i++) {
+            if (sheets[i] === this.state.selected) {
+                defaultSheetIndex = i;
+                break;
+            }
+        }
 
         return (
             <div className={className}>
@@ -344,6 +364,7 @@ class WorkbookView extends React.Component<WorkbookViewProps, WorkbookViewState>
                         sortHelperClass="sheet-tab-sort-helper"
                         horizontal={true}
                         list={sheets}
+                        initialSelect={defaultSheetIndex}
                         addible={false} // disable ManipulableList's default behavior
                         sortable={this.props.editable}
                         removable={false} // disable ManipulableList's default behavior
@@ -361,10 +382,13 @@ class WorkbookView extends React.Component<WorkbookViewProps, WorkbookViewState>
                         <SheetView
                             key={sheet.name}
                             sheet={sheet}
-                            className={(this.state.selected === sheet) ? "active" : "inactive"}
+                            className={(this.state.selected === sheet) ?
+                                "active" : "inactive"}
                             editable={this.props.editable}
                             onAction={this.handleSheetAction}
-                            herald={this} />
+                            herald={this}
+                            controlPortal={this.state.selected === sheet ?
+                                this.props.controlPortal : undefined} />
                     )}
                 </div>
             </div>

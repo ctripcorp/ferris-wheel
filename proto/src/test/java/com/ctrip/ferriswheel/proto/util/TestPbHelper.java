@@ -15,7 +15,6 @@ import com.ctrip.ferriswheel.core.asset.FilingClerk;
 import com.ctrip.ferriswheel.core.bean.ChartData;
 import com.ctrip.ferriswheel.core.bean.DefaultEnvironment;
 import com.ctrip.ferriswheel.core.bean.TableAutomatonInfo;
-import com.ctrip.ferriswheel.core.bean.ValueRule;
 import com.ctrip.ferriswheel.core.loader.DefaultProviderManager;
 import com.google.protobuf.InvalidProtocolBufferException;
 import junit.framework.TestCase;
@@ -59,6 +58,8 @@ public class TestPbHelper extends TestCase {
                 .build();
 
         Table table = new FilingClerk(env).createWorkbook("test-workbook").addSheet("sheet1").addAsset(Table.class, "table1");
+        table.addRows(3);
+        table.addColumns(1);
         table.setCellFormula(0, 0, "2^10");
         table.setCellFormula(2, 0, "A1*4");
         com.ctrip.ferriswheel.proto.v1.SheetAsset asset = PbHelper.pb(table);
@@ -70,15 +71,10 @@ public class TestPbHelper extends TestCase {
         assertEquals(0, t.getRows(0).getRowIndex());
         assertEquals(2, t.getRows(1).getRowIndex());
 
-        Map<String, DynamicVariant> builtinParams = new LinkedHashMap<>();
-        builtinParams.put("Greeting", new DynamicValue("\"hello world\""));
-        builtinParams.put("Goodbye", new DynamicValue("\"bye!\""));
-        Map<String, VariantRule> userParamRules = new HashMap<>();
-        userParamRules.put("Name",
-                new ValueRule(VariantType.STRING,
-                        true,
-                        new LinkedHashSet<>(Arrays.asList(Value.str("Sand"), Value.str("Snow")))));
-        table.automate(new TableAutomatonInfo.QueryAutomatonInfo(new TableAutomatonInfo.QueryTemplateInfo(scheme, builtinParams, userParamRules)));
+        Map<String, Parameter> builtinParams = new LinkedHashMap<>();
+        builtinParams.put("Greeting", new DefaultParameter("Greeting", new DynamicValue("\"hello world\"")));
+        builtinParams.put("Goodbye", new DefaultParameter("Goodbye", new DynamicValue("\"bye!\"")));
+        table.automate(new TableAutomatonInfo.QueryAutomatonInfo(new TableAutomatonInfo.QueryTemplateInfo(scheme, builtinParams)));
         asset = PbHelper.pb(table);
         t = asset.getTable();
         assertTrue(t.hasAutomaton());
@@ -104,6 +100,8 @@ public class TestPbHelper extends TestCase {
         Sheet sheet1 = new FilingClerk(new DefaultEnvironment.Builder().build())
                 .createWorkbook("test-workbook").addSheet("sheet1");
         Table table1 = sheet1.addAsset(Table.class, "table1");
+        table1.addRows(1);
+        table1.addColumns(3);
         table1.setCellValue(0, 0, Value.str("foobar"));
         table1.setCellValue(0, 1, Value.dec(2));
         table1.setCellValue(0, 2, Value.dec(3));
@@ -136,6 +134,8 @@ public class TestPbHelper extends TestCase {
     public void testRowToProto() {
         Table table = new FilingClerk(new DefaultEnvironment.Builder().build())
                 .createWorkbook("test-workbook").addSheet("sheet1").addAsset(Table.class, "table1");
+        table.addRows(3);
+        table.addColumns(3);
         table.setCellFormula(2, 0, "2^10");
         table.setCellFormula(2, 2, "A3*4");
         com.ctrip.ferriswheel.proto.v1.Row row = PbHelper.pb(table.getRow(2), 2);
@@ -150,6 +150,8 @@ public class TestPbHelper extends TestCase {
     public void testCellToProto() {
         Table table = new FilingClerk(new DefaultEnvironment.Builder().build())
                 .createWorkbook("test-workbook").addSheet("sheet1").addAsset(Table.class, "table1");
+        table.addRows(3);
+        table.addColumns(3);
         table.setCellFormula(2, 2, "2^10");
         com.ctrip.ferriswheel.proto.v1.Cell cell = PbHelper.pb(table.getCell(2, 2), 2);
         assertEquals(2, cell.getColumnIndex());
@@ -160,10 +162,10 @@ public class TestPbHelper extends TestCase {
     }
 
     public void testVariantToProto() {
-        com.ctrip.ferriswheel.proto.v1.UnionValue v = PbHelper.pb(Value.err(ErrorCodes.ILLEGAL_VALUE));
+        com.ctrip.ferriswheel.proto.v1.UnionValue v = PbHelper.pb(Value.err(ErrorCodes.VALUE));
         assertEquals("", v.getFormulaString());
         assertEquals(com.ctrip.ferriswheel.proto.v1.UnionValue.ValueCase.ERROR, v.getValueCase());
-        assertEquals(com.ctrip.ferriswheel.proto.v1.ErrorCode.EC_ILLEGAL_VALUE.getNumber(), v.getError().getNumber());
+        assertEquals(com.ctrip.ferriswheel.proto.v1.ErrorCode.EC_VALUE.getNumber(), v.getError().getNumber());
 
         v = PbHelper.pb(Value.BLANK);
         assertEquals("", v.getFormulaString());
@@ -228,14 +230,12 @@ public class TestPbHelper extends TestCase {
         Table t1 = s1.addAsset(Table.class, "t1");
         Table t2 = s1.addAsset(Table.class, "t2");
 
-        Map<String, DynamicVariant> builtinParams = new HashMap<>();
-        builtinParams.put("Greeting", new DynamicValue("\"hello world\""));
-        Map<String, VariantRule> userParamRules = new HashMap<>();
-        userParamRules.put("Name",
-                new ValueRule(VariantType.STRING,
-                        true,
-                        new HashSet<>(Arrays.asList(Value.str("Sand"), Value.str("Snow")))));
-        t0.automate(new TableAutomatonInfo.QueryAutomatonInfo(new TableAutomatonInfo.QueryTemplateInfo(scheme, builtinParams, userParamRules)));
+        Map<String, Parameter> builtinParams = new HashMap<>();
+        builtinParams.put("Greeting", new DefaultParameter("Greeting", new DynamicValue("\"hello world\"")));
+        t0.automate(new TableAutomatonInfo.QueryAutomatonInfo(new TableAutomatonInfo.QueryTemplateInfo(scheme, builtinParams)));
+
+        t1.addRows(3);
+        t1.addColumns(4);
 
         t1.setCellFormula(0, 0, "t2!A1^2");
         t1.setCellValue(0, 1, Value.str("foo"));
@@ -262,6 +262,9 @@ public class TestPbHelper extends TestCase {
                                 null,
                                 new DynamicValue("t1!B3:D3"))
                 )));
+
+        t2.addRows(1);
+        t2.addColumns(1);
         t2.setCellValue(0, 0, Value.dec(2));
 
         com.ctrip.ferriswheel.proto.v1.Workbook proto = PbHelper.pb(wb);
@@ -285,15 +288,8 @@ public class TestPbHelper extends TestCase {
         TableAutomatonInfo.QueryTemplateInfo template = auto.getQueryAutomatonInfo().getTemplate();
         assertEquals(scheme, template.getScheme());
         assertEquals(1, template.getAllBuiltinParams().size());
-        DynamicValue param = (DynamicValue) template.getAllBuiltinParams().get("Greeting");
-        assertEquals("\"hello world\"", param.getFormulaString());
-        assertEquals(1, template.getAllUserParamRules().size());
-        VariantRule rule = template.getAllUserParamRules().get("Name");
-        assertEquals(VariantType.STRING, rule.getType());
-        assertTrue(rule.isNullable());
-        assertEquals(2, rule.getAllowedValues().size());
-        assertTrue(rule.getAllowedValues().contains(Value.str("Sand")));
-        assertTrue(rule.getAllowedValues().contains(Value.str("Snow")));
+        Parameter param = template.getAllBuiltinParams().get("Greeting");
+        assertEquals("\"hello world\"", param.getValue().getFormulaString());
 
         assertEquals(3, t1.getRowCount());
         assertEquals(4, t1.getColumnCount());
@@ -345,6 +341,8 @@ public class TestPbHelper extends TestCase {
         Workbook wb = new FilingClerk(new DefaultEnvironment.Builder().build()).createWorkbook("test-workbook");
         Sheet s1 = wb.addSheet("sheet1");
         Table t1 = s1.addAsset(Table.class, "table1");
+        t1.addRows(3);
+        t1.addColumns(3);
         t1.setCellValue(0, 1, Value.str("foo"));
         t1.setCellValue(0, 2, Value.str("bar"));
         t1.setCellValue(1, 0, Value.str("a"));

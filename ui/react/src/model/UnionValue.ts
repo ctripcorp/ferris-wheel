@@ -15,8 +15,7 @@ abstract class UnionValue implements Variant {
     }
 
     public isFormula() {
-        return (typeof this.formulaString === 'string' &&
-            this.formulaString !== '');
+        return typeof this.formulaString === 'string';
     }
     public getFormulaString() {
         return typeof this.formulaString === 'string' ?
@@ -31,9 +30,9 @@ abstract class UnionValue implements Variant {
     public booleanValue(): boolean { throw new Error('Illegal state.'); }
     public dateValue(): Date { throw new Error('Illegal state.'); }
     public strValue(): string { throw new Error('Illegal state.'); }
-    public listValue(): Variant[] { throw new Error('Illegal state.'); }
+    public listValue(): UnionValue[] { throw new Error('Illegal state.'); }
     public itemCount(): number { return 1; }
-    public item(i: number): Variant { throw new Error('Illegal state.'); }
+    public item(i: number): UnionValue { throw new Error('Illegal state.'); }
 
     public toString(): string {
         switch (this.valueType()) {
@@ -54,7 +53,7 @@ abstract class UnionValue implements Variant {
                 if (date === null) {
                     throw new Error();
                 }
-                return moment(date).utc().format();
+                return moment(date).format("YYYY-MM-DD HH:mm:ss");
             case VariantType.STRING:
                 const str = this.strValue();
                 if (str === null) {

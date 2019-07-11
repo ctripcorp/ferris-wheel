@@ -40,9 +40,17 @@ class Sheet {
             } else if (typeof asset.text !== 'undefined' &&
                 asset.text.name === name) {
                 return asset;
+
+            } else if (typeof asset.form !== 'undefined' &&
+                asset.form.name === name) {
+                return asset;
             }
         }
         return null;
+    }
+
+    clone() {
+        return SheetAsset.deserialize(this);
     }
 }
 

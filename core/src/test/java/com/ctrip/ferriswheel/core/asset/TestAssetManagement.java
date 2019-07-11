@@ -7,6 +7,7 @@ import com.ctrip.ferriswheel.common.chart.Chart;
 import com.ctrip.ferriswheel.common.table.Cell;
 import com.ctrip.ferriswheel.common.table.Row;
 import com.ctrip.ferriswheel.common.table.Table;
+import com.ctrip.ferriswheel.common.variant.DefaultParameter;
 import com.ctrip.ferriswheel.common.variant.DynamicValue;
 import com.ctrip.ferriswheel.common.variant.Value;
 import com.ctrip.ferriswheel.core.bean.ChartData;
@@ -83,12 +84,10 @@ public class TestAssetManagement extends TestCase {
         DefaultTable table = (DefaultTable) wb.addSheet("sheet1").addAsset(Table.class, "table1");
         checkAssetMap(wb);
 
-        // the following ops are not really effective
-
-        table.insertRows(0, 1);
+        table.addRows(0, 7);
         checkAssetMap(wb);
 
-        table.insertColumns(0, 1);
+        table.addColumns(0, 7);
         checkAssetMap(wb);
 
         // do something really effects
@@ -108,27 +107,27 @@ public class TestAssetManagement extends TestCase {
         table.setCellValue(6, 6, new Value.StrValue("blah.."));
         checkAssetMap(wb);
 
-        table.insertRows(4, 2);
+        table.addRows(4, 2);
         checkAssetMap(wb);
 
         table.setCellValue(4, 4, new Value.StrValue("new"));
         table.setCellValue(5, 5, new Value.StrValue("new"));
         checkAssetMap(wb);
 
-        table.eraseRows(1, 2);
+        table.eraseCells(1, 2, 1, 2);
         checkAssetMap(wb);
 
         table.removeRows(1, 2);
         checkAssetMap(wb);
 
-        table.insertColumns(4, 1);
+        table.addColumns(4, 1);
         checkAssetMap(wb);
 
         table.setCellValue(4, 4, new Value.StrValue("new"));
         table.setCellValue(5, 5, new Value.StrValue("new"));
         checkAssetMap(wb);
 
-        table.eraseColumns(1, 2);
+        table.eraseCells(0, 3, 5, 1);
         checkAssetMap(wb);
 
         table.removeColumns(1, 2);
@@ -140,7 +139,7 @@ public class TestAssetManagement extends TestCase {
         table.setCellFormula(3, 3, "C3");
         checkAssetMap(wb);
 
-        table.eraseCell(2, 2);
+        table.eraseCells(2, 2, 2, 2);
         checkAssetMap(wb);
     }
 
@@ -151,7 +150,7 @@ public class TestAssetManagement extends TestCase {
 
         TableAutomatonInfo.QueryTemplateInfo queryTemplateInfo = new TableAutomatonInfo.QueryTemplateInfo();
         queryTemplateInfo.setScheme("test");
-        queryTemplateInfo.addBuiltinParam("p1", new DynamicValue("NOW()"));
+        queryTemplateInfo.addBuiltinParam("p1", new DefaultParameter("p1", new DynamicValue("NOW()")));
         try {
             table.automate(new TableAutomatonInfo.QueryAutomatonInfo(queryTemplateInfo, null, null));
         } catch (RuntimeException e) {
@@ -167,6 +166,9 @@ public class TestAssetManagement extends TestCase {
         checkAssetMap(wb);
 
         DefaultTable t1 = (DefaultTable) s1.addAsset(Table.class, "table1");
+
+        t1.addColumns(0, 4);
+        t1.addRows(0, 4);
 
         t1.setCellValue(0, 1, new Value.StrValue("foo"));
         checkAssetMap(wb);
@@ -318,7 +320,7 @@ public class TestAssetManagement extends TestCase {
             assertEquals(1, assetMap.get(template.getAssetId()).referenceCount.get());
 
             for (String name : template.getBuiltinParamNames()) {
-                ValueNode param = template.getBuiltinParam(name);
+                ValueNode param = (ValueNode) template.getBuiltinParam(name).getValue();
                 assertEquals(template, param.getParent());
                 assertTrue(pendingAssetIds.remove(param.getAssetId()));
                 assertEquals(1, assetMap.get(param.getAssetId()).referenceCount.get());

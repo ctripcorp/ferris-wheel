@@ -17,8 +17,11 @@ import ChartConsult from '../action/ChartConsult';
 import AddChart from '../action/AddChart';
 import AddTable from '../action/AddTable';
 import RemoveAsset from '../action/RemoveAsset';
+import AddForm from '../action/AddForm';
 import AddText from '../action/AddText';
 import RenameAsset from '../action/RenameAsset';
+import GroupView, { GroupItem } from './GroupView';
+import LayoutForm from '../form/LayoutForm';
 import classnames from "classnames";
 import 'react-grid-layout/css/styles.css';
 import 'react-resizable/css/styles.css';
@@ -41,25 +44,24 @@ class SheetView extends React.Component<SheetViewProps, SheetViewState> implemen
     constructor(props: SheetViewProps) {
         super(props);
 
+        this.applyAction = this.applyAction.bind(this);
+        this.handleContainerClick = this.handleContainerClick.bind(this);
+        this.handleContainerLayoutChange = this.handleContainerLayoutChange.bind(this);
+        this.handleAssetLayoutChange = this.handleAssetLayoutChange.bind(this);
+        this.handleAssetAction = this.handleAssetAction.bind(this);
+
         this.state = {
             selected: undefined
         };
 
-        this.applyAction = this.applyAction.bind(this);
-        this.handleContainerClick = this.handleContainerClick.bind(this);
-        this.handleLayoutChange = this.handleLayoutChange.bind(this);
-        this.handleAssetAction = this.handleAssetAction.bind(this);
+        if (typeof this.props.herald !== 'undefined') {
+            this.props.herald.subscribe(this.applyAction);
+        }
     }
 
     public componentDidUpdate(prevProps: SheetViewProps) {
         if (this.props.sheet !== prevProps.sheet) {
             this.selectAsset(undefined);
-        }
-    }
-
-    public componentDidMount() {
-        if (typeof this.props.herald !== 'undefined') {
-            this.props.herald.subscribe(this.applyAction);
         }
     }
 
@@ -90,6 +92,8 @@ class SheetView extends React.Component<SheetViewProps, SheetViewState> implemen
             this.applyAddText(action.addText);
         } else if (typeof action.chartConsult !== 'undefined') {
             this.applyChartConsult(action.chartConsult);
+        } else if (typeof action.addForm !== 'undefined') {
+            this.applyAddForm(action.addForm);
         } else if (typeof action.removeAsset !== 'undefined') {
             this.applyRemoveAsset(action.removeAsset);
         } else if (typeof action.renameAsset !== 'undefined') {
@@ -112,6 +116,10 @@ class SheetView extends React.Component<SheetViewProps, SheetViewState> implemen
 
     protected applyAddText(addText: AddText) {
         this.doApplyAddAsset(new SheetAsset(undefined, undefined, addText.text));
+    }
+
+    protected applyAddForm(addForm: AddForm) {
+        this.doApplyAddAsset(new SheetAsset(undefined, undefined, undefined, addForm.form));
     }
 
     protected doApplyAddAsset(asset: SheetAsset) {
@@ -193,7 +201,7 @@ class SheetView extends React.Component<SheetViewProps, SheetViewState> implemen
         }
     }
 
-    protected handleLayoutChange(gridLayouts: ReactGridLayout.Layout[]) {
+    protected handleAssetLayoutChange(gridLayouts: ReactGridLayout.Layout[]) {
         if (typeof this.props.onAction === 'undefined') {
             return;
         }
@@ -212,7 +220,7 @@ class SheetView extends React.Component<SheetViewProps, SheetViewState> implemen
                 continue;
             }
 
-            const newLayout = Layout.deserialize(asset.layout);
+            const newLayout = asset.layout.clone();
             if (typeof newLayout.grid === 'undefined' || newLayout.grid === null) {
                 newLayout.grid = new Grid();
             }
@@ -276,11 +284,20 @@ class SheetView extends React.Component<SheetViewProps, SheetViewState> implemen
             g1.row.end !== g2.row.end;
     }
 
+    protected handleContainerLayoutChange(layout: Layout) {
+        const action = new LayoutAsset(this.props.sheet.name, "", layout).wrapper();
+        this.handleAction(action);
+    }
+
     protected handleAssetAction(action: Action) {
         const meta = action.specific();
         if (meta['sheetName'] === '') {
             meta['sheetName'] = this.props.sheet.name;
         }
+        this.handleAction(action);
+    }
+
+    protected handleAction(action: Action) {
         if (typeof this.props.onAction !== 'undefined') {
             this.props.onAction(action);
         }
@@ -306,14 +323,14 @@ class SheetView extends React.Component<SheetViewProps, SheetViewState> implemen
                     ref={this.layoutElement}
                     className="layout-container"
                     cols={layout.grid.columns || 12}
-                    rowHeight={30}
+                    rowHeight={20}
                     width={layout.width || 1200}
                     margin={[10, 10]}
                     useCSSTransforms={false} /* handsontable's column/row resize handler has a problem when work with css transform, refer: https://github.com/handsontable/handsontable/issues/2937 */
                     isDraggable={this.props.editable}
                     isResizable={this.props.editable}
                     draggableHandle=".draggable-handle"
-                    onLayoutChange={this.handleLayoutChange}>
+                    onLayoutChange={this.handleAssetLayoutChange}>
 
                     {assets.map((arbitraryAsset, i) => {
                         const asset = arbitraryAsset.specific();
@@ -325,6 +342,7 @@ class SheetView extends React.Component<SheetViewProps, SheetViewState> implemen
                         const isSelected = (this.state.selected === arbitraryAsset);
                         const assetContainerClassName = classnames(
                             "asset-container",
+                            arbitraryAsset.assetType() + "-asset-container",
                             {
                                 "editable": this.props.editable,
                                 "selected": isSelected
@@ -341,7 +359,9 @@ class SheetView extends React.Component<SheetViewProps, SheetViewState> implemen
                                     asset={arbitraryAsset}
                                     editable={this.props.editable}
                                     onAction={this.handleAssetAction}
-                                    herald={this} />
+                                    herald={this}
+                                    controlPortal={isSelected ?
+                                        this.props.controlPortal : undefined} />
 
                                 {isSelected && (
                                     <div className="asset-container-action">
@@ -353,7 +373,27 @@ class SheetView extends React.Component<SheetViewProps, SheetViewState> implemen
                     })}
 
                 </ReactGridLayout>
+
+                {typeof this.state.selected === "undefined" &&
+                    typeof this.props.controlPortal !== "undefined" &&
+                    ReactDOM.createPortal(this.renderControl(), this.props.controlPortal)}
             </div>
+        );
+    }
+
+    protected renderControl() {
+        return (
+            <GroupView className="realtime-edit sheet-option">
+                <GroupItem
+                    name="layout"
+                    title="布局">
+                    <form onSubmit={e => e.preventDefault()}>
+                        <LayoutForm
+                            layout={this.props.sheet.layout}
+                            afterChange={this.handleContainerLayoutChange} />
+                    </form>
+                </GroupItem>
+            </GroupView>
         );
     }
 }

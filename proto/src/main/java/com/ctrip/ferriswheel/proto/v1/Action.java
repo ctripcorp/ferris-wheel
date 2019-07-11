@@ -156,31 +156,17 @@ private static final long serialVersionUID = 0L;
             break;
           }
           case 74: {
-            com.ctrip.ferriswheel.proto.v1.EraseColumns.Builder subBuilder = null;
+            com.ctrip.ferriswheel.proto.v1.EraseCells.Builder subBuilder = null;
             if (actionCase_ == 9) {
-              subBuilder = ((com.ctrip.ferriswheel.proto.v1.EraseColumns) action_).toBuilder();
+              subBuilder = ((com.ctrip.ferriswheel.proto.v1.EraseCells) action_).toBuilder();
             }
             action_ =
-                input.readMessage(com.ctrip.ferriswheel.proto.v1.EraseColumns.parser(), extensionRegistry);
+                input.readMessage(com.ctrip.ferriswheel.proto.v1.EraseCells.parser(), extensionRegistry);
             if (subBuilder != null) {
-              subBuilder.mergeFrom((com.ctrip.ferriswheel.proto.v1.EraseColumns) action_);
+              subBuilder.mergeFrom((com.ctrip.ferriswheel.proto.v1.EraseCells) action_);
               action_ = subBuilder.buildPartial();
             }
             actionCase_ = 9;
-            break;
-          }
-          case 82: {
-            com.ctrip.ferriswheel.proto.v1.EraseRows.Builder subBuilder = null;
-            if (actionCase_ == 10) {
-              subBuilder = ((com.ctrip.ferriswheel.proto.v1.EraseRows) action_).toBuilder();
-            }
-            action_ =
-                input.readMessage(com.ctrip.ferriswheel.proto.v1.EraseRows.parser(), extensionRegistry);
-            if (subBuilder != null) {
-              subBuilder.mergeFrom((com.ctrip.ferriswheel.proto.v1.EraseRows) action_);
-              action_ = subBuilder.buildPartial();
-            }
-            actionCase_ = 10;
             break;
           }
           case 90: {
@@ -547,6 +533,48 @@ private static final long serialVersionUID = 0L;
             actionCase_ = 36;
             break;
           }
+          case 298: {
+            com.ctrip.ferriswheel.proto.v1.AddForm.Builder subBuilder = null;
+            if (actionCase_ == 37) {
+              subBuilder = ((com.ctrip.ferriswheel.proto.v1.AddForm) action_).toBuilder();
+            }
+            action_ =
+                input.readMessage(com.ctrip.ferriswheel.proto.v1.AddForm.parser(), extensionRegistry);
+            if (subBuilder != null) {
+              subBuilder.mergeFrom((com.ctrip.ferriswheel.proto.v1.AddForm) action_);
+              action_ = subBuilder.buildPartial();
+            }
+            actionCase_ = 37;
+            break;
+          }
+          case 306: {
+            com.ctrip.ferriswheel.proto.v1.UpdateForm.Builder subBuilder = null;
+            if (actionCase_ == 38) {
+              subBuilder = ((com.ctrip.ferriswheel.proto.v1.UpdateForm) action_).toBuilder();
+            }
+            action_ =
+                input.readMessage(com.ctrip.ferriswheel.proto.v1.UpdateForm.parser(), extensionRegistry);
+            if (subBuilder != null) {
+              subBuilder.mergeFrom((com.ctrip.ferriswheel.proto.v1.UpdateForm) action_);
+              action_ = subBuilder.buildPartial();
+            }
+            actionCase_ = 38;
+            break;
+          }
+          case 314: {
+            com.ctrip.ferriswheel.proto.v1.SubmitForm.Builder subBuilder = null;
+            if (actionCase_ == 39) {
+              subBuilder = ((com.ctrip.ferriswheel.proto.v1.SubmitForm) action_).toBuilder();
+            }
+            action_ =
+                input.readMessage(com.ctrip.ferriswheel.proto.v1.SubmitForm.parser(), extensionRegistry);
+            if (subBuilder != null) {
+              subBuilder.mergeFrom((com.ctrip.ferriswheel.proto.v1.SubmitForm) action_);
+              action_ = subBuilder.buildPartial();
+            }
+            actionCase_ = 39;
+            break;
+          }
           default: {
             if (!parseUnknownField(
                 input, unknownFields, extensionRegistry, tag)) {
@@ -591,8 +619,7 @@ private static final long serialVersionUID = 0L;
     SET_CELL_FORMULA(6),
     REFRESH_CELL_VALUE(7),
     CHART_CONSULT(8),
-    ERASE_COLUMNS(9),
-    ERASE_ROWS(10),
+    ERASE_CELLS(9),
     FILL_UP(11),
     FILL_RIGHT(12),
     FILL_DOWN(13),
@@ -619,6 +646,9 @@ private static final long serialVersionUID = 0L;
     EXECUTE_QUERY(34),
     RESET_TABLE(35),
     SET_CELLS_FORMAT(36),
+    ADD_FORM(37),
+    UPDATE_FORM(38),
+    SUBMIT_FORM(39),
     ACTION_NOT_SET(0);
     private final int value;
     private ActionCase(int value) {
@@ -642,8 +672,7 @@ private static final long serialVersionUID = 0L;
         case 6: return SET_CELL_FORMULA;
         case 7: return REFRESH_CELL_VALUE;
         case 8: return CHART_CONSULT;
-        case 9: return ERASE_COLUMNS;
-        case 10: return ERASE_ROWS;
+        case 9: return ERASE_CELLS;
         case 11: return FILL_UP;
         case 12: return FILL_RIGHT;
         case 13: return FILL_DOWN;
@@ -670,6 +699,9 @@ private static final long serialVersionUID = 0L;
         case 34: return EXECUTE_QUERY;
         case 35: return RESET_TABLE;
         case 36: return SET_CELLS_FORMAT;
+        case 37: return ADD_FORM;
+        case 38: return UPDATE_FORM;
+        case 39: return SUBMIT_FORM;
         case 0: return ACTION_NOT_SET;
         default: return null;
       }
@@ -893,66 +925,48 @@ private static final long serialVersionUID = 0L;
     return com.ctrip.ferriswheel.proto.v1.ChartConsult.getDefaultInstance();
   }
 
-  public static final int ERASE_COLUMNS_FIELD_NUMBER = 9;
+  public static final int ERASE_CELLS_FIELD_NUMBER = 9;
   /**
-   * <code>.ferriswheel.v1.EraseColumns erase_columns = 9;</code>
+   * <code>.ferriswheel.v1.EraseCells erase_cells = 9;</code>
    */
-  public boolean hasEraseColumns() {
+  public boolean hasEraseCells() {
     return actionCase_ == 9;
   }
   /**
-   * <code>.ferriswheel.v1.EraseColumns erase_columns = 9;</code>
+   * <code>.ferriswheel.v1.EraseCells erase_cells = 9;</code>
    */
-  public com.ctrip.ferriswheel.proto.v1.EraseColumns getEraseColumns() {
+  public com.ctrip.ferriswheel.proto.v1.EraseCells getEraseCells() {
     if (actionCase_ == 9) {
-       return (com.ctrip.ferriswheel.proto.v1.EraseColumns) action_;
+       return (com.ctrip.ferriswheel.proto.v1.EraseCells) action_;
     }
-    return com.ctrip.ferriswheel.proto.v1.EraseColumns.getDefaultInstance();
+    return com.ctrip.ferriswheel.proto.v1.EraseCells.getDefaultInstance();
   }
   /**
-   * <code>.ferriswheel.v1.EraseColumns erase_columns = 9;</code>
+   * <code>.ferriswheel.v1.EraseCells erase_cells = 9;</code>
    */
-  public com.ctrip.ferriswheel.proto.v1.EraseColumnsOrBuilder getEraseColumnsOrBuilder() {
+  public com.ctrip.ferriswheel.proto.v1.EraseCellsOrBuilder getEraseCellsOrBuilder() {
     if (actionCase_ == 9) {
-       return (com.ctrip.ferriswheel.proto.v1.EraseColumns) action_;
+       return (com.ctrip.ferriswheel.proto.v1.EraseCells) action_;
     }
-    return com.ctrip.ferriswheel.proto.v1.EraseColumns.getDefaultInstance();
-  }
-
-  public static final int ERASE_ROWS_FIELD_NUMBER = 10;
-  /**
-   * <code>.ferriswheel.v1.EraseRows erase_rows = 10;</code>
-   */
-  public boolean hasEraseRows() {
-    return actionCase_ == 10;
-  }
-  /**
-   * <code>.ferriswheel.v1.EraseRows erase_rows = 10;</code>
-   */
-  public com.ctrip.ferriswheel.proto.v1.EraseRows getEraseRows() {
-    if (actionCase_ == 10) {
-       return (com.ctrip.ferriswheel.proto.v1.EraseRows) action_;
-    }
-    return com.ctrip.ferriswheel.proto.v1.EraseRows.getDefaultInstance();
-  }
-  /**
-   * <code>.ferriswheel.v1.EraseRows erase_rows = 10;</code>
-   */
-  public com.ctrip.ferriswheel.proto.v1.EraseRowsOrBuilder getEraseRowsOrBuilder() {
-    if (actionCase_ == 10) {
-       return (com.ctrip.ferriswheel.proto.v1.EraseRows) action_;
-    }
-    return com.ctrip.ferriswheel.proto.v1.EraseRows.getDefaultInstance();
+    return com.ctrip.ferriswheel.proto.v1.EraseCells.getDefaultInstance();
   }
 
   public static final int FILL_UP_FIELD_NUMBER = 11;
   /**
+   * <pre>
+   * EraseRows erase_rows = 10; // Reserved
+   * </pre>
+   *
    * <code>.ferriswheel.v1.FillUp fill_up = 11;</code>
    */
   public boolean hasFillUp() {
     return actionCase_ == 11;
   }
   /**
+   * <pre>
+   * EraseRows erase_rows = 10; // Reserved
+   * </pre>
+   *
    * <code>.ferriswheel.v1.FillUp fill_up = 11;</code>
    */
   public com.ctrip.ferriswheel.proto.v1.FillUp getFillUp() {
@@ -962,6 +976,10 @@ private static final long serialVersionUID = 0L;
     return com.ctrip.ferriswheel.proto.v1.FillUp.getDefaultInstance();
   }
   /**
+   * <pre>
+   * EraseRows erase_rows = 10; // Reserved
+   * </pre>
+   *
    * <code>.ferriswheel.v1.FillUp fill_up = 11;</code>
    */
   public com.ctrip.ferriswheel.proto.v1.FillUpOrBuilder getFillUpOrBuilder() {
@@ -1545,12 +1563,20 @@ private static final long serialVersionUID = 0L;
 
   public static final int EXECUTE_QUERY_FIELD_NUMBER = 34;
   /**
+   * <pre>
+   * deprecated
+   * </pre>
+   *
    * <code>.ferriswheel.v1.ExecuteQuery execute_query = 34;</code>
    */
   public boolean hasExecuteQuery() {
     return actionCase_ == 34;
   }
   /**
+   * <pre>
+   * deprecated
+   * </pre>
+   *
    * <code>.ferriswheel.v1.ExecuteQuery execute_query = 34;</code>
    */
   public com.ctrip.ferriswheel.proto.v1.ExecuteQuery getExecuteQuery() {
@@ -1560,6 +1586,10 @@ private static final long serialVersionUID = 0L;
     return com.ctrip.ferriswheel.proto.v1.ExecuteQuery.getDefaultInstance();
   }
   /**
+   * <pre>
+   * deprecated
+   * </pre>
+   *
    * <code>.ferriswheel.v1.ExecuteQuery execute_query = 34;</code>
    */
   public com.ctrip.ferriswheel.proto.v1.ExecuteQueryOrBuilder getExecuteQueryOrBuilder() {
@@ -1621,6 +1651,84 @@ private static final long serialVersionUID = 0L;
     return com.ctrip.ferriswheel.proto.v1.SetCellsFormat.getDefaultInstance();
   }
 
+  public static final int ADD_FORM_FIELD_NUMBER = 37;
+  /**
+   * <code>.ferriswheel.v1.AddForm add_form = 37;</code>
+   */
+  public boolean hasAddForm() {
+    return actionCase_ == 37;
+  }
+  /**
+   * <code>.ferriswheel.v1.AddForm add_form = 37;</code>
+   */
+  public com.ctrip.ferriswheel.proto.v1.AddForm getAddForm() {
+    if (actionCase_ == 37) {
+       return (com.ctrip.ferriswheel.proto.v1.AddForm) action_;
+    }
+    return com.ctrip.ferriswheel.proto.v1.AddForm.getDefaultInstance();
+  }
+  /**
+   * <code>.ferriswheel.v1.AddForm add_form = 37;</code>
+   */
+  public com.ctrip.ferriswheel.proto.v1.AddFormOrBuilder getAddFormOrBuilder() {
+    if (actionCase_ == 37) {
+       return (com.ctrip.ferriswheel.proto.v1.AddForm) action_;
+    }
+    return com.ctrip.ferriswheel.proto.v1.AddForm.getDefaultInstance();
+  }
+
+  public static final int UPDATE_FORM_FIELD_NUMBER = 38;
+  /**
+   * <code>.ferriswheel.v1.UpdateForm update_form = 38;</code>
+   */
+  public boolean hasUpdateForm() {
+    return actionCase_ == 38;
+  }
+  /**
+   * <code>.ferriswheel.v1.UpdateForm update_form = 38;</code>
+   */
+  public com.ctrip.ferriswheel.proto.v1.UpdateForm getUpdateForm() {
+    if (actionCase_ == 38) {
+       return (com.ctrip.ferriswheel.proto.v1.UpdateForm) action_;
+    }
+    return com.ctrip.ferriswheel.proto.v1.UpdateForm.getDefaultInstance();
+  }
+  /**
+   * <code>.ferriswheel.v1.UpdateForm update_form = 38;</code>
+   */
+  public com.ctrip.ferriswheel.proto.v1.UpdateFormOrBuilder getUpdateFormOrBuilder() {
+    if (actionCase_ == 38) {
+       return (com.ctrip.ferriswheel.proto.v1.UpdateForm) action_;
+    }
+    return com.ctrip.ferriswheel.proto.v1.UpdateForm.getDefaultInstance();
+  }
+
+  public static final int SUBMIT_FORM_FIELD_NUMBER = 39;
+  /**
+   * <code>.ferriswheel.v1.SubmitForm submit_form = 39;</code>
+   */
+  public boolean hasSubmitForm() {
+    return actionCase_ == 39;
+  }
+  /**
+   * <code>.ferriswheel.v1.SubmitForm submit_form = 39;</code>
+   */
+  public com.ctrip.ferriswheel.proto.v1.SubmitForm getSubmitForm() {
+    if (actionCase_ == 39) {
+       return (com.ctrip.ferriswheel.proto.v1.SubmitForm) action_;
+    }
+    return com.ctrip.ferriswheel.proto.v1.SubmitForm.getDefaultInstance();
+  }
+  /**
+   * <code>.ferriswheel.v1.SubmitForm submit_form = 39;</code>
+   */
+  public com.ctrip.ferriswheel.proto.v1.SubmitFormOrBuilder getSubmitFormOrBuilder() {
+    if (actionCase_ == 39) {
+       return (com.ctrip.ferriswheel.proto.v1.SubmitForm) action_;
+    }
+    return com.ctrip.ferriswheel.proto.v1.SubmitForm.getDefaultInstance();
+  }
+
   private byte memoizedIsInitialized = -1;
   @java.lang.Override
   public final boolean isInitialized() {
@@ -1660,10 +1768,7 @@ private static final long serialVersionUID = 0L;
       output.writeMessage(8, (com.ctrip.ferriswheel.proto.v1.ChartConsult) action_);
     }
     if (actionCase_ == 9) {
-      output.writeMessage(9, (com.ctrip.ferriswheel.proto.v1.EraseColumns) action_);
-    }
-    if (actionCase_ == 10) {
-      output.writeMessage(10, (com.ctrip.ferriswheel.proto.v1.EraseRows) action_);
+      output.writeMessage(9, (com.ctrip.ferriswheel.proto.v1.EraseCells) action_);
     }
     if (actionCase_ == 11) {
       output.writeMessage(11, (com.ctrip.ferriswheel.proto.v1.FillUp) action_);
@@ -1743,6 +1848,15 @@ private static final long serialVersionUID = 0L;
     if (actionCase_ == 36) {
       output.writeMessage(36, (com.ctrip.ferriswheel.proto.v1.SetCellsFormat) action_);
     }
+    if (actionCase_ == 37) {
+      output.writeMessage(37, (com.ctrip.ferriswheel.proto.v1.AddForm) action_);
+    }
+    if (actionCase_ == 38) {
+      output.writeMessage(38, (com.ctrip.ferriswheel.proto.v1.UpdateForm) action_);
+    }
+    if (actionCase_ == 39) {
+      output.writeMessage(39, (com.ctrip.ferriswheel.proto.v1.SubmitForm) action_);
+    }
     unknownFields.writeTo(output);
   }
 
@@ -1786,11 +1900,7 @@ private static final long serialVersionUID = 0L;
     }
     if (actionCase_ == 9) {
       size += com.google.protobuf.CodedOutputStream
-        .computeMessageSize(9, (com.ctrip.ferriswheel.proto.v1.EraseColumns) action_);
-    }
-    if (actionCase_ == 10) {
-      size += com.google.protobuf.CodedOutputStream
-        .computeMessageSize(10, (com.ctrip.ferriswheel.proto.v1.EraseRows) action_);
+        .computeMessageSize(9, (com.ctrip.ferriswheel.proto.v1.EraseCells) action_);
     }
     if (actionCase_ == 11) {
       size += com.google.protobuf.CodedOutputStream
@@ -1896,6 +2006,18 @@ private static final long serialVersionUID = 0L;
       size += com.google.protobuf.CodedOutputStream
         .computeMessageSize(36, (com.ctrip.ferriswheel.proto.v1.SetCellsFormat) action_);
     }
+    if (actionCase_ == 37) {
+      size += com.google.protobuf.CodedOutputStream
+        .computeMessageSize(37, (com.ctrip.ferriswheel.proto.v1.AddForm) action_);
+    }
+    if (actionCase_ == 38) {
+      size += com.google.protobuf.CodedOutputStream
+        .computeMessageSize(38, (com.ctrip.ferriswheel.proto.v1.UpdateForm) action_);
+    }
+    if (actionCase_ == 39) {
+      size += com.google.protobuf.CodedOutputStream
+        .computeMessageSize(39, (com.ctrip.ferriswheel.proto.v1.SubmitForm) action_);
+    }
     size += unknownFields.getSerializedSize();
     memoizedSize = size;
     return size;
@@ -1946,12 +2068,8 @@ private static final long serialVersionUID = 0L;
             .equals(other.getChartConsult())) return false;
         break;
       case 9:
-        if (!getEraseColumns()
-            .equals(other.getEraseColumns())) return false;
-        break;
-      case 10:
-        if (!getEraseRows()
-            .equals(other.getEraseRows())) return false;
+        if (!getEraseCells()
+            .equals(other.getEraseCells())) return false;
         break;
       case 11:
         if (!getFillUp()
@@ -2057,6 +2175,18 @@ private static final long serialVersionUID = 0L;
         if (!getSetCellsFormat()
             .equals(other.getSetCellsFormat())) return false;
         break;
+      case 37:
+        if (!getAddForm()
+            .equals(other.getAddForm())) return false;
+        break;
+      case 38:
+        if (!getUpdateForm()
+            .equals(other.getUpdateForm())) return false;
+        break;
+      case 39:
+        if (!getSubmitForm()
+            .equals(other.getSubmitForm())) return false;
+        break;
       case 0:
       default:
     }
@@ -2105,12 +2235,8 @@ private static final long serialVersionUID = 0L;
         hash = (53 * hash) + getChartConsult().hashCode();
         break;
       case 9:
-        hash = (37 * hash) + ERASE_COLUMNS_FIELD_NUMBER;
-        hash = (53 * hash) + getEraseColumns().hashCode();
-        break;
-      case 10:
-        hash = (37 * hash) + ERASE_ROWS_FIELD_NUMBER;
-        hash = (53 * hash) + getEraseRows().hashCode();
+        hash = (37 * hash) + ERASE_CELLS_FIELD_NUMBER;
+        hash = (53 * hash) + getEraseCells().hashCode();
         break;
       case 11:
         hash = (37 * hash) + FILL_UP_FIELD_NUMBER;
@@ -2215,6 +2341,18 @@ private static final long serialVersionUID = 0L;
       case 36:
         hash = (37 * hash) + SET_CELLS_FORMAT_FIELD_NUMBER;
         hash = (53 * hash) + getSetCellsFormat().hashCode();
+        break;
+      case 37:
+        hash = (37 * hash) + ADD_FORM_FIELD_NUMBER;
+        hash = (53 * hash) + getAddForm().hashCode();
+        break;
+      case 38:
+        hash = (37 * hash) + UPDATE_FORM_FIELD_NUMBER;
+        hash = (53 * hash) + getUpdateForm().hashCode();
+        break;
+      case 39:
+        hash = (37 * hash) + SUBMIT_FORM_FIELD_NUMBER;
+        hash = (53 * hash) + getSubmitForm().hashCode();
         break;
       case 0:
       default:
@@ -2437,17 +2575,10 @@ private static final long serialVersionUID = 0L;
         }
       }
       if (actionCase_ == 9) {
-        if (eraseColumnsBuilder_ == null) {
+        if (eraseCellsBuilder_ == null) {
           result.action_ = action_;
         } else {
-          result.action_ = eraseColumnsBuilder_.build();
-        }
-      }
-      if (actionCase_ == 10) {
-        if (eraseRowsBuilder_ == null) {
-          result.action_ = action_;
-        } else {
-          result.action_ = eraseRowsBuilder_.build();
+          result.action_ = eraseCellsBuilder_.build();
         }
       }
       if (actionCase_ == 11) {
@@ -2632,6 +2763,27 @@ private static final long serialVersionUID = 0L;
           result.action_ = setCellsFormatBuilder_.build();
         }
       }
+      if (actionCase_ == 37) {
+        if (addFormBuilder_ == null) {
+          result.action_ = action_;
+        } else {
+          result.action_ = addFormBuilder_.build();
+        }
+      }
+      if (actionCase_ == 38) {
+        if (updateFormBuilder_ == null) {
+          result.action_ = action_;
+        } else {
+          result.action_ = updateFormBuilder_.build();
+        }
+      }
+      if (actionCase_ == 39) {
+        if (submitFormBuilder_ == null) {
+          result.action_ = action_;
+        } else {
+          result.action_ = submitFormBuilder_.build();
+        }
+      }
       result.actionCase_ = actionCase_;
       onBuilt();
       return result;
@@ -2714,12 +2866,8 @@ private static final long serialVersionUID = 0L;
           mergeChartConsult(other.getChartConsult());
           break;
         }
-        case ERASE_COLUMNS: {
-          mergeEraseColumns(other.getEraseColumns());
-          break;
-        }
-        case ERASE_ROWS: {
-          mergeEraseRows(other.getEraseRows());
+        case ERASE_CELLS: {
+          mergeEraseCells(other.getEraseCells());
           break;
         }
         case FILL_UP: {
@@ -2824,6 +2972,18 @@ private static final long serialVersionUID = 0L;
         }
         case SET_CELLS_FORMAT: {
           mergeSetCellsFormat(other.getSetCellsFormat());
+          break;
+        }
+        case ADD_FORM: {
+          mergeAddForm(other.getAddForm());
+          break;
+        }
+        case UPDATE_FORM: {
+          mergeUpdateForm(other.getUpdateForm());
+          break;
+        }
+        case SUBMIT_FORM: {
+          mergeSubmitForm(other.getSubmitForm());
           break;
         }
         case ACTION_NOT_SET: {
@@ -3963,67 +4123,67 @@ private static final long serialVersionUID = 0L;
     }
 
     private com.google.protobuf.SingleFieldBuilderV3<
-        com.ctrip.ferriswheel.proto.v1.EraseColumns, com.ctrip.ferriswheel.proto.v1.EraseColumns.Builder, com.ctrip.ferriswheel.proto.v1.EraseColumnsOrBuilder> eraseColumnsBuilder_;
+        com.ctrip.ferriswheel.proto.v1.EraseCells, com.ctrip.ferriswheel.proto.v1.EraseCells.Builder, com.ctrip.ferriswheel.proto.v1.EraseCellsOrBuilder> eraseCellsBuilder_;
     /**
-     * <code>.ferriswheel.v1.EraseColumns erase_columns = 9;</code>
+     * <code>.ferriswheel.v1.EraseCells erase_cells = 9;</code>
      */
-    public boolean hasEraseColumns() {
+    public boolean hasEraseCells() {
       return actionCase_ == 9;
     }
     /**
-     * <code>.ferriswheel.v1.EraseColumns erase_columns = 9;</code>
+     * <code>.ferriswheel.v1.EraseCells erase_cells = 9;</code>
      */
-    public com.ctrip.ferriswheel.proto.v1.EraseColumns getEraseColumns() {
-      if (eraseColumnsBuilder_ == null) {
+    public com.ctrip.ferriswheel.proto.v1.EraseCells getEraseCells() {
+      if (eraseCellsBuilder_ == null) {
         if (actionCase_ == 9) {
-          return (com.ctrip.ferriswheel.proto.v1.EraseColumns) action_;
+          return (com.ctrip.ferriswheel.proto.v1.EraseCells) action_;
         }
-        return com.ctrip.ferriswheel.proto.v1.EraseColumns.getDefaultInstance();
+        return com.ctrip.ferriswheel.proto.v1.EraseCells.getDefaultInstance();
       } else {
         if (actionCase_ == 9) {
-          return eraseColumnsBuilder_.getMessage();
+          return eraseCellsBuilder_.getMessage();
         }
-        return com.ctrip.ferriswheel.proto.v1.EraseColumns.getDefaultInstance();
+        return com.ctrip.ferriswheel.proto.v1.EraseCells.getDefaultInstance();
       }
     }
     /**
-     * <code>.ferriswheel.v1.EraseColumns erase_columns = 9;</code>
+     * <code>.ferriswheel.v1.EraseCells erase_cells = 9;</code>
      */
-    public Builder setEraseColumns(com.ctrip.ferriswheel.proto.v1.EraseColumns value) {
-      if (eraseColumnsBuilder_ == null) {
+    public Builder setEraseCells(com.ctrip.ferriswheel.proto.v1.EraseCells value) {
+      if (eraseCellsBuilder_ == null) {
         if (value == null) {
           throw new NullPointerException();
         }
         action_ = value;
         onChanged();
       } else {
-        eraseColumnsBuilder_.setMessage(value);
+        eraseCellsBuilder_.setMessage(value);
       }
       actionCase_ = 9;
       return this;
     }
     /**
-     * <code>.ferriswheel.v1.EraseColumns erase_columns = 9;</code>
+     * <code>.ferriswheel.v1.EraseCells erase_cells = 9;</code>
      */
-    public Builder setEraseColumns(
-        com.ctrip.ferriswheel.proto.v1.EraseColumns.Builder builderForValue) {
-      if (eraseColumnsBuilder_ == null) {
+    public Builder setEraseCells(
+        com.ctrip.ferriswheel.proto.v1.EraseCells.Builder builderForValue) {
+      if (eraseCellsBuilder_ == null) {
         action_ = builderForValue.build();
         onChanged();
       } else {
-        eraseColumnsBuilder_.setMessage(builderForValue.build());
+        eraseCellsBuilder_.setMessage(builderForValue.build());
       }
       actionCase_ = 9;
       return this;
     }
     /**
-     * <code>.ferriswheel.v1.EraseColumns erase_columns = 9;</code>
+     * <code>.ferriswheel.v1.EraseCells erase_cells = 9;</code>
      */
-    public Builder mergeEraseColumns(com.ctrip.ferriswheel.proto.v1.EraseColumns value) {
-      if (eraseColumnsBuilder_ == null) {
+    public Builder mergeEraseCells(com.ctrip.ferriswheel.proto.v1.EraseCells value) {
+      if (eraseCellsBuilder_ == null) {
         if (actionCase_ == 9 &&
-            action_ != com.ctrip.ferriswheel.proto.v1.EraseColumns.getDefaultInstance()) {
-          action_ = com.ctrip.ferriswheel.proto.v1.EraseColumns.newBuilder((com.ctrip.ferriswheel.proto.v1.EraseColumns) action_)
+            action_ != com.ctrip.ferriswheel.proto.v1.EraseCells.getDefaultInstance()) {
+          action_ = com.ctrip.ferriswheel.proto.v1.EraseCells.newBuilder((com.ctrip.ferriswheel.proto.v1.EraseCells) action_)
               .mergeFrom(value).buildPartial();
         } else {
           action_ = value;
@@ -4031,18 +4191,18 @@ private static final long serialVersionUID = 0L;
         onChanged();
       } else {
         if (actionCase_ == 9) {
-          eraseColumnsBuilder_.mergeFrom(value);
+          eraseCellsBuilder_.mergeFrom(value);
         }
-        eraseColumnsBuilder_.setMessage(value);
+        eraseCellsBuilder_.setMessage(value);
       }
       actionCase_ = 9;
       return this;
     }
     /**
-     * <code>.ferriswheel.v1.EraseColumns erase_columns = 9;</code>
+     * <code>.ferriswheel.v1.EraseCells erase_cells = 9;</code>
      */
-    public Builder clearEraseColumns() {
-      if (eraseColumnsBuilder_ == null) {
+    public Builder clearEraseCells() {
+      if (eraseCellsBuilder_ == null) {
         if (actionCase_ == 9) {
           actionCase_ = 0;
           action_ = null;
@@ -4053,196 +4213,68 @@ private static final long serialVersionUID = 0L;
           actionCase_ = 0;
           action_ = null;
         }
-        eraseColumnsBuilder_.clear();
+        eraseCellsBuilder_.clear();
       }
       return this;
     }
     /**
-     * <code>.ferriswheel.v1.EraseColumns erase_columns = 9;</code>
+     * <code>.ferriswheel.v1.EraseCells erase_cells = 9;</code>
      */
-    public com.ctrip.ferriswheel.proto.v1.EraseColumns.Builder getEraseColumnsBuilder() {
-      return getEraseColumnsFieldBuilder().getBuilder();
+    public com.ctrip.ferriswheel.proto.v1.EraseCells.Builder getEraseCellsBuilder() {
+      return getEraseCellsFieldBuilder().getBuilder();
     }
     /**
-     * <code>.ferriswheel.v1.EraseColumns erase_columns = 9;</code>
+     * <code>.ferriswheel.v1.EraseCells erase_cells = 9;</code>
      */
-    public com.ctrip.ferriswheel.proto.v1.EraseColumnsOrBuilder getEraseColumnsOrBuilder() {
-      if ((actionCase_ == 9) && (eraseColumnsBuilder_ != null)) {
-        return eraseColumnsBuilder_.getMessageOrBuilder();
+    public com.ctrip.ferriswheel.proto.v1.EraseCellsOrBuilder getEraseCellsOrBuilder() {
+      if ((actionCase_ == 9) && (eraseCellsBuilder_ != null)) {
+        return eraseCellsBuilder_.getMessageOrBuilder();
       } else {
         if (actionCase_ == 9) {
-          return (com.ctrip.ferriswheel.proto.v1.EraseColumns) action_;
+          return (com.ctrip.ferriswheel.proto.v1.EraseCells) action_;
         }
-        return com.ctrip.ferriswheel.proto.v1.EraseColumns.getDefaultInstance();
+        return com.ctrip.ferriswheel.proto.v1.EraseCells.getDefaultInstance();
       }
     }
     /**
-     * <code>.ferriswheel.v1.EraseColumns erase_columns = 9;</code>
+     * <code>.ferriswheel.v1.EraseCells erase_cells = 9;</code>
      */
     private com.google.protobuf.SingleFieldBuilderV3<
-        com.ctrip.ferriswheel.proto.v1.EraseColumns, com.ctrip.ferriswheel.proto.v1.EraseColumns.Builder, com.ctrip.ferriswheel.proto.v1.EraseColumnsOrBuilder> 
-        getEraseColumnsFieldBuilder() {
-      if (eraseColumnsBuilder_ == null) {
+        com.ctrip.ferriswheel.proto.v1.EraseCells, com.ctrip.ferriswheel.proto.v1.EraseCells.Builder, com.ctrip.ferriswheel.proto.v1.EraseCellsOrBuilder> 
+        getEraseCellsFieldBuilder() {
+      if (eraseCellsBuilder_ == null) {
         if (!(actionCase_ == 9)) {
-          action_ = com.ctrip.ferriswheel.proto.v1.EraseColumns.getDefaultInstance();
+          action_ = com.ctrip.ferriswheel.proto.v1.EraseCells.getDefaultInstance();
         }
-        eraseColumnsBuilder_ = new com.google.protobuf.SingleFieldBuilderV3<
-            com.ctrip.ferriswheel.proto.v1.EraseColumns, com.ctrip.ferriswheel.proto.v1.EraseColumns.Builder, com.ctrip.ferriswheel.proto.v1.EraseColumnsOrBuilder>(
-                (com.ctrip.ferriswheel.proto.v1.EraseColumns) action_,
+        eraseCellsBuilder_ = new com.google.protobuf.SingleFieldBuilderV3<
+            com.ctrip.ferriswheel.proto.v1.EraseCells, com.ctrip.ferriswheel.proto.v1.EraseCells.Builder, com.ctrip.ferriswheel.proto.v1.EraseCellsOrBuilder>(
+                (com.ctrip.ferriswheel.proto.v1.EraseCells) action_,
                 getParentForChildren(),
                 isClean());
         action_ = null;
       }
       actionCase_ = 9;
       onChanged();;
-      return eraseColumnsBuilder_;
-    }
-
-    private com.google.protobuf.SingleFieldBuilderV3<
-        com.ctrip.ferriswheel.proto.v1.EraseRows, com.ctrip.ferriswheel.proto.v1.EraseRows.Builder, com.ctrip.ferriswheel.proto.v1.EraseRowsOrBuilder> eraseRowsBuilder_;
-    /**
-     * <code>.ferriswheel.v1.EraseRows erase_rows = 10;</code>
-     */
-    public boolean hasEraseRows() {
-      return actionCase_ == 10;
-    }
-    /**
-     * <code>.ferriswheel.v1.EraseRows erase_rows = 10;</code>
-     */
-    public com.ctrip.ferriswheel.proto.v1.EraseRows getEraseRows() {
-      if (eraseRowsBuilder_ == null) {
-        if (actionCase_ == 10) {
-          return (com.ctrip.ferriswheel.proto.v1.EraseRows) action_;
-        }
-        return com.ctrip.ferriswheel.proto.v1.EraseRows.getDefaultInstance();
-      } else {
-        if (actionCase_ == 10) {
-          return eraseRowsBuilder_.getMessage();
-        }
-        return com.ctrip.ferriswheel.proto.v1.EraseRows.getDefaultInstance();
-      }
-    }
-    /**
-     * <code>.ferriswheel.v1.EraseRows erase_rows = 10;</code>
-     */
-    public Builder setEraseRows(com.ctrip.ferriswheel.proto.v1.EraseRows value) {
-      if (eraseRowsBuilder_ == null) {
-        if (value == null) {
-          throw new NullPointerException();
-        }
-        action_ = value;
-        onChanged();
-      } else {
-        eraseRowsBuilder_.setMessage(value);
-      }
-      actionCase_ = 10;
-      return this;
-    }
-    /**
-     * <code>.ferriswheel.v1.EraseRows erase_rows = 10;</code>
-     */
-    public Builder setEraseRows(
-        com.ctrip.ferriswheel.proto.v1.EraseRows.Builder builderForValue) {
-      if (eraseRowsBuilder_ == null) {
-        action_ = builderForValue.build();
-        onChanged();
-      } else {
-        eraseRowsBuilder_.setMessage(builderForValue.build());
-      }
-      actionCase_ = 10;
-      return this;
-    }
-    /**
-     * <code>.ferriswheel.v1.EraseRows erase_rows = 10;</code>
-     */
-    public Builder mergeEraseRows(com.ctrip.ferriswheel.proto.v1.EraseRows value) {
-      if (eraseRowsBuilder_ == null) {
-        if (actionCase_ == 10 &&
-            action_ != com.ctrip.ferriswheel.proto.v1.EraseRows.getDefaultInstance()) {
-          action_ = com.ctrip.ferriswheel.proto.v1.EraseRows.newBuilder((com.ctrip.ferriswheel.proto.v1.EraseRows) action_)
-              .mergeFrom(value).buildPartial();
-        } else {
-          action_ = value;
-        }
-        onChanged();
-      } else {
-        if (actionCase_ == 10) {
-          eraseRowsBuilder_.mergeFrom(value);
-        }
-        eraseRowsBuilder_.setMessage(value);
-      }
-      actionCase_ = 10;
-      return this;
-    }
-    /**
-     * <code>.ferriswheel.v1.EraseRows erase_rows = 10;</code>
-     */
-    public Builder clearEraseRows() {
-      if (eraseRowsBuilder_ == null) {
-        if (actionCase_ == 10) {
-          actionCase_ = 0;
-          action_ = null;
-          onChanged();
-        }
-      } else {
-        if (actionCase_ == 10) {
-          actionCase_ = 0;
-          action_ = null;
-        }
-        eraseRowsBuilder_.clear();
-      }
-      return this;
-    }
-    /**
-     * <code>.ferriswheel.v1.EraseRows erase_rows = 10;</code>
-     */
-    public com.ctrip.ferriswheel.proto.v1.EraseRows.Builder getEraseRowsBuilder() {
-      return getEraseRowsFieldBuilder().getBuilder();
-    }
-    /**
-     * <code>.ferriswheel.v1.EraseRows erase_rows = 10;</code>
-     */
-    public com.ctrip.ferriswheel.proto.v1.EraseRowsOrBuilder getEraseRowsOrBuilder() {
-      if ((actionCase_ == 10) && (eraseRowsBuilder_ != null)) {
-        return eraseRowsBuilder_.getMessageOrBuilder();
-      } else {
-        if (actionCase_ == 10) {
-          return (com.ctrip.ferriswheel.proto.v1.EraseRows) action_;
-        }
-        return com.ctrip.ferriswheel.proto.v1.EraseRows.getDefaultInstance();
-      }
-    }
-    /**
-     * <code>.ferriswheel.v1.EraseRows erase_rows = 10;</code>
-     */
-    private com.google.protobuf.SingleFieldBuilderV3<
-        com.ctrip.ferriswheel.proto.v1.EraseRows, com.ctrip.ferriswheel.proto.v1.EraseRows.Builder, com.ctrip.ferriswheel.proto.v1.EraseRowsOrBuilder> 
-        getEraseRowsFieldBuilder() {
-      if (eraseRowsBuilder_ == null) {
-        if (!(actionCase_ == 10)) {
-          action_ = com.ctrip.ferriswheel.proto.v1.EraseRows.getDefaultInstance();
-        }
-        eraseRowsBuilder_ = new com.google.protobuf.SingleFieldBuilderV3<
-            com.ctrip.ferriswheel.proto.v1.EraseRows, com.ctrip.ferriswheel.proto.v1.EraseRows.Builder, com.ctrip.ferriswheel.proto.v1.EraseRowsOrBuilder>(
-                (com.ctrip.ferriswheel.proto.v1.EraseRows) action_,
-                getParentForChildren(),
-                isClean());
-        action_ = null;
-      }
-      actionCase_ = 10;
-      onChanged();;
-      return eraseRowsBuilder_;
+      return eraseCellsBuilder_;
     }
 
     private com.google.protobuf.SingleFieldBuilderV3<
         com.ctrip.ferriswheel.proto.v1.FillUp, com.ctrip.ferriswheel.proto.v1.FillUp.Builder, com.ctrip.ferriswheel.proto.v1.FillUpOrBuilder> fillUpBuilder_;
     /**
+     * <pre>
+     * EraseRows erase_rows = 10; // Reserved
+     * </pre>
+     *
      * <code>.ferriswheel.v1.FillUp fill_up = 11;</code>
      */
     public boolean hasFillUp() {
       return actionCase_ == 11;
     }
     /**
+     * <pre>
+     * EraseRows erase_rows = 10; // Reserved
+     * </pre>
+     *
      * <code>.ferriswheel.v1.FillUp fill_up = 11;</code>
      */
     public com.ctrip.ferriswheel.proto.v1.FillUp getFillUp() {
@@ -4259,6 +4291,10 @@ private static final long serialVersionUID = 0L;
       }
     }
     /**
+     * <pre>
+     * EraseRows erase_rows = 10; // Reserved
+     * </pre>
+     *
      * <code>.ferriswheel.v1.FillUp fill_up = 11;</code>
      */
     public Builder setFillUp(com.ctrip.ferriswheel.proto.v1.FillUp value) {
@@ -4275,6 +4311,10 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
+     * <pre>
+     * EraseRows erase_rows = 10; // Reserved
+     * </pre>
+     *
      * <code>.ferriswheel.v1.FillUp fill_up = 11;</code>
      */
     public Builder setFillUp(
@@ -4289,6 +4329,10 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
+     * <pre>
+     * EraseRows erase_rows = 10; // Reserved
+     * </pre>
+     *
      * <code>.ferriswheel.v1.FillUp fill_up = 11;</code>
      */
     public Builder mergeFillUp(com.ctrip.ferriswheel.proto.v1.FillUp value) {
@@ -4311,6 +4355,10 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
+     * <pre>
+     * EraseRows erase_rows = 10; // Reserved
+     * </pre>
+     *
      * <code>.ferriswheel.v1.FillUp fill_up = 11;</code>
      */
     public Builder clearFillUp() {
@@ -4330,12 +4378,20 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
+     * <pre>
+     * EraseRows erase_rows = 10; // Reserved
+     * </pre>
+     *
      * <code>.ferriswheel.v1.FillUp fill_up = 11;</code>
      */
     public com.ctrip.ferriswheel.proto.v1.FillUp.Builder getFillUpBuilder() {
       return getFillUpFieldBuilder().getBuilder();
     }
     /**
+     * <pre>
+     * EraseRows erase_rows = 10; // Reserved
+     * </pre>
+     *
      * <code>.ferriswheel.v1.FillUp fill_up = 11;</code>
      */
     public com.ctrip.ferriswheel.proto.v1.FillUpOrBuilder getFillUpOrBuilder() {
@@ -4349,6 +4405,10 @@ private static final long serialVersionUID = 0L;
       }
     }
     /**
+     * <pre>
+     * EraseRows erase_rows = 10; // Reserved
+     * </pre>
+     *
      * <code>.ferriswheel.v1.FillUp fill_up = 11;</code>
      */
     private com.google.protobuf.SingleFieldBuilderV3<
@@ -7365,12 +7425,20 @@ private static final long serialVersionUID = 0L;
     private com.google.protobuf.SingleFieldBuilderV3<
         com.ctrip.ferriswheel.proto.v1.ExecuteQuery, com.ctrip.ferriswheel.proto.v1.ExecuteQuery.Builder, com.ctrip.ferriswheel.proto.v1.ExecuteQueryOrBuilder> executeQueryBuilder_;
     /**
+     * <pre>
+     * deprecated
+     * </pre>
+     *
      * <code>.ferriswheel.v1.ExecuteQuery execute_query = 34;</code>
      */
     public boolean hasExecuteQuery() {
       return actionCase_ == 34;
     }
     /**
+     * <pre>
+     * deprecated
+     * </pre>
+     *
      * <code>.ferriswheel.v1.ExecuteQuery execute_query = 34;</code>
      */
     public com.ctrip.ferriswheel.proto.v1.ExecuteQuery getExecuteQuery() {
@@ -7387,6 +7455,10 @@ private static final long serialVersionUID = 0L;
       }
     }
     /**
+     * <pre>
+     * deprecated
+     * </pre>
+     *
      * <code>.ferriswheel.v1.ExecuteQuery execute_query = 34;</code>
      */
     public Builder setExecuteQuery(com.ctrip.ferriswheel.proto.v1.ExecuteQuery value) {
@@ -7403,6 +7475,10 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
+     * <pre>
+     * deprecated
+     * </pre>
+     *
      * <code>.ferriswheel.v1.ExecuteQuery execute_query = 34;</code>
      */
     public Builder setExecuteQuery(
@@ -7417,6 +7493,10 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
+     * <pre>
+     * deprecated
+     * </pre>
+     *
      * <code>.ferriswheel.v1.ExecuteQuery execute_query = 34;</code>
      */
     public Builder mergeExecuteQuery(com.ctrip.ferriswheel.proto.v1.ExecuteQuery value) {
@@ -7439,6 +7519,10 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
+     * <pre>
+     * deprecated
+     * </pre>
+     *
      * <code>.ferriswheel.v1.ExecuteQuery execute_query = 34;</code>
      */
     public Builder clearExecuteQuery() {
@@ -7458,12 +7542,20 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
+     * <pre>
+     * deprecated
+     * </pre>
+     *
      * <code>.ferriswheel.v1.ExecuteQuery execute_query = 34;</code>
      */
     public com.ctrip.ferriswheel.proto.v1.ExecuteQuery.Builder getExecuteQueryBuilder() {
       return getExecuteQueryFieldBuilder().getBuilder();
     }
     /**
+     * <pre>
+     * deprecated
+     * </pre>
+     *
      * <code>.ferriswheel.v1.ExecuteQuery execute_query = 34;</code>
      */
     public com.ctrip.ferriswheel.proto.v1.ExecuteQueryOrBuilder getExecuteQueryOrBuilder() {
@@ -7477,6 +7569,10 @@ private static final long serialVersionUID = 0L;
       }
     }
     /**
+     * <pre>
+     * deprecated
+     * </pre>
+     *
      * <code>.ferriswheel.v1.ExecuteQuery execute_query = 34;</code>
      */
     private com.google.protobuf.SingleFieldBuilderV3<
@@ -7768,6 +7864,414 @@ private static final long serialVersionUID = 0L;
       actionCase_ = 36;
       onChanged();;
       return setCellsFormatBuilder_;
+    }
+
+    private com.google.protobuf.SingleFieldBuilderV3<
+        com.ctrip.ferriswheel.proto.v1.AddForm, com.ctrip.ferriswheel.proto.v1.AddForm.Builder, com.ctrip.ferriswheel.proto.v1.AddFormOrBuilder> addFormBuilder_;
+    /**
+     * <code>.ferriswheel.v1.AddForm add_form = 37;</code>
+     */
+    public boolean hasAddForm() {
+      return actionCase_ == 37;
+    }
+    /**
+     * <code>.ferriswheel.v1.AddForm add_form = 37;</code>
+     */
+    public com.ctrip.ferriswheel.proto.v1.AddForm getAddForm() {
+      if (addFormBuilder_ == null) {
+        if (actionCase_ == 37) {
+          return (com.ctrip.ferriswheel.proto.v1.AddForm) action_;
+        }
+        return com.ctrip.ferriswheel.proto.v1.AddForm.getDefaultInstance();
+      } else {
+        if (actionCase_ == 37) {
+          return addFormBuilder_.getMessage();
+        }
+        return com.ctrip.ferriswheel.proto.v1.AddForm.getDefaultInstance();
+      }
+    }
+    /**
+     * <code>.ferriswheel.v1.AddForm add_form = 37;</code>
+     */
+    public Builder setAddForm(com.ctrip.ferriswheel.proto.v1.AddForm value) {
+      if (addFormBuilder_ == null) {
+        if (value == null) {
+          throw new NullPointerException();
+        }
+        action_ = value;
+        onChanged();
+      } else {
+        addFormBuilder_.setMessage(value);
+      }
+      actionCase_ = 37;
+      return this;
+    }
+    /**
+     * <code>.ferriswheel.v1.AddForm add_form = 37;</code>
+     */
+    public Builder setAddForm(
+        com.ctrip.ferriswheel.proto.v1.AddForm.Builder builderForValue) {
+      if (addFormBuilder_ == null) {
+        action_ = builderForValue.build();
+        onChanged();
+      } else {
+        addFormBuilder_.setMessage(builderForValue.build());
+      }
+      actionCase_ = 37;
+      return this;
+    }
+    /**
+     * <code>.ferriswheel.v1.AddForm add_form = 37;</code>
+     */
+    public Builder mergeAddForm(com.ctrip.ferriswheel.proto.v1.AddForm value) {
+      if (addFormBuilder_ == null) {
+        if (actionCase_ == 37 &&
+            action_ != com.ctrip.ferriswheel.proto.v1.AddForm.getDefaultInstance()) {
+          action_ = com.ctrip.ferriswheel.proto.v1.AddForm.newBuilder((com.ctrip.ferriswheel.proto.v1.AddForm) action_)
+              .mergeFrom(value).buildPartial();
+        } else {
+          action_ = value;
+        }
+        onChanged();
+      } else {
+        if (actionCase_ == 37) {
+          addFormBuilder_.mergeFrom(value);
+        }
+        addFormBuilder_.setMessage(value);
+      }
+      actionCase_ = 37;
+      return this;
+    }
+    /**
+     * <code>.ferriswheel.v1.AddForm add_form = 37;</code>
+     */
+    public Builder clearAddForm() {
+      if (addFormBuilder_ == null) {
+        if (actionCase_ == 37) {
+          actionCase_ = 0;
+          action_ = null;
+          onChanged();
+        }
+      } else {
+        if (actionCase_ == 37) {
+          actionCase_ = 0;
+          action_ = null;
+        }
+        addFormBuilder_.clear();
+      }
+      return this;
+    }
+    /**
+     * <code>.ferriswheel.v1.AddForm add_form = 37;</code>
+     */
+    public com.ctrip.ferriswheel.proto.v1.AddForm.Builder getAddFormBuilder() {
+      return getAddFormFieldBuilder().getBuilder();
+    }
+    /**
+     * <code>.ferriswheel.v1.AddForm add_form = 37;</code>
+     */
+    public com.ctrip.ferriswheel.proto.v1.AddFormOrBuilder getAddFormOrBuilder() {
+      if ((actionCase_ == 37) && (addFormBuilder_ != null)) {
+        return addFormBuilder_.getMessageOrBuilder();
+      } else {
+        if (actionCase_ == 37) {
+          return (com.ctrip.ferriswheel.proto.v1.AddForm) action_;
+        }
+        return com.ctrip.ferriswheel.proto.v1.AddForm.getDefaultInstance();
+      }
+    }
+    /**
+     * <code>.ferriswheel.v1.AddForm add_form = 37;</code>
+     */
+    private com.google.protobuf.SingleFieldBuilderV3<
+        com.ctrip.ferriswheel.proto.v1.AddForm, com.ctrip.ferriswheel.proto.v1.AddForm.Builder, com.ctrip.ferriswheel.proto.v1.AddFormOrBuilder> 
+        getAddFormFieldBuilder() {
+      if (addFormBuilder_ == null) {
+        if (!(actionCase_ == 37)) {
+          action_ = com.ctrip.ferriswheel.proto.v1.AddForm.getDefaultInstance();
+        }
+        addFormBuilder_ = new com.google.protobuf.SingleFieldBuilderV3<
+            com.ctrip.ferriswheel.proto.v1.AddForm, com.ctrip.ferriswheel.proto.v1.AddForm.Builder, com.ctrip.ferriswheel.proto.v1.AddFormOrBuilder>(
+                (com.ctrip.ferriswheel.proto.v1.AddForm) action_,
+                getParentForChildren(),
+                isClean());
+        action_ = null;
+      }
+      actionCase_ = 37;
+      onChanged();;
+      return addFormBuilder_;
+    }
+
+    private com.google.protobuf.SingleFieldBuilderV3<
+        com.ctrip.ferriswheel.proto.v1.UpdateForm, com.ctrip.ferriswheel.proto.v1.UpdateForm.Builder, com.ctrip.ferriswheel.proto.v1.UpdateFormOrBuilder> updateFormBuilder_;
+    /**
+     * <code>.ferriswheel.v1.UpdateForm update_form = 38;</code>
+     */
+    public boolean hasUpdateForm() {
+      return actionCase_ == 38;
+    }
+    /**
+     * <code>.ferriswheel.v1.UpdateForm update_form = 38;</code>
+     */
+    public com.ctrip.ferriswheel.proto.v1.UpdateForm getUpdateForm() {
+      if (updateFormBuilder_ == null) {
+        if (actionCase_ == 38) {
+          return (com.ctrip.ferriswheel.proto.v1.UpdateForm) action_;
+        }
+        return com.ctrip.ferriswheel.proto.v1.UpdateForm.getDefaultInstance();
+      } else {
+        if (actionCase_ == 38) {
+          return updateFormBuilder_.getMessage();
+        }
+        return com.ctrip.ferriswheel.proto.v1.UpdateForm.getDefaultInstance();
+      }
+    }
+    /**
+     * <code>.ferriswheel.v1.UpdateForm update_form = 38;</code>
+     */
+    public Builder setUpdateForm(com.ctrip.ferriswheel.proto.v1.UpdateForm value) {
+      if (updateFormBuilder_ == null) {
+        if (value == null) {
+          throw new NullPointerException();
+        }
+        action_ = value;
+        onChanged();
+      } else {
+        updateFormBuilder_.setMessage(value);
+      }
+      actionCase_ = 38;
+      return this;
+    }
+    /**
+     * <code>.ferriswheel.v1.UpdateForm update_form = 38;</code>
+     */
+    public Builder setUpdateForm(
+        com.ctrip.ferriswheel.proto.v1.UpdateForm.Builder builderForValue) {
+      if (updateFormBuilder_ == null) {
+        action_ = builderForValue.build();
+        onChanged();
+      } else {
+        updateFormBuilder_.setMessage(builderForValue.build());
+      }
+      actionCase_ = 38;
+      return this;
+    }
+    /**
+     * <code>.ferriswheel.v1.UpdateForm update_form = 38;</code>
+     */
+    public Builder mergeUpdateForm(com.ctrip.ferriswheel.proto.v1.UpdateForm value) {
+      if (updateFormBuilder_ == null) {
+        if (actionCase_ == 38 &&
+            action_ != com.ctrip.ferriswheel.proto.v1.UpdateForm.getDefaultInstance()) {
+          action_ = com.ctrip.ferriswheel.proto.v1.UpdateForm.newBuilder((com.ctrip.ferriswheel.proto.v1.UpdateForm) action_)
+              .mergeFrom(value).buildPartial();
+        } else {
+          action_ = value;
+        }
+        onChanged();
+      } else {
+        if (actionCase_ == 38) {
+          updateFormBuilder_.mergeFrom(value);
+        }
+        updateFormBuilder_.setMessage(value);
+      }
+      actionCase_ = 38;
+      return this;
+    }
+    /**
+     * <code>.ferriswheel.v1.UpdateForm update_form = 38;</code>
+     */
+    public Builder clearUpdateForm() {
+      if (updateFormBuilder_ == null) {
+        if (actionCase_ == 38) {
+          actionCase_ = 0;
+          action_ = null;
+          onChanged();
+        }
+      } else {
+        if (actionCase_ == 38) {
+          actionCase_ = 0;
+          action_ = null;
+        }
+        updateFormBuilder_.clear();
+      }
+      return this;
+    }
+    /**
+     * <code>.ferriswheel.v1.UpdateForm update_form = 38;</code>
+     */
+    public com.ctrip.ferriswheel.proto.v1.UpdateForm.Builder getUpdateFormBuilder() {
+      return getUpdateFormFieldBuilder().getBuilder();
+    }
+    /**
+     * <code>.ferriswheel.v1.UpdateForm update_form = 38;</code>
+     */
+    public com.ctrip.ferriswheel.proto.v1.UpdateFormOrBuilder getUpdateFormOrBuilder() {
+      if ((actionCase_ == 38) && (updateFormBuilder_ != null)) {
+        return updateFormBuilder_.getMessageOrBuilder();
+      } else {
+        if (actionCase_ == 38) {
+          return (com.ctrip.ferriswheel.proto.v1.UpdateForm) action_;
+        }
+        return com.ctrip.ferriswheel.proto.v1.UpdateForm.getDefaultInstance();
+      }
+    }
+    /**
+     * <code>.ferriswheel.v1.UpdateForm update_form = 38;</code>
+     */
+    private com.google.protobuf.SingleFieldBuilderV3<
+        com.ctrip.ferriswheel.proto.v1.UpdateForm, com.ctrip.ferriswheel.proto.v1.UpdateForm.Builder, com.ctrip.ferriswheel.proto.v1.UpdateFormOrBuilder> 
+        getUpdateFormFieldBuilder() {
+      if (updateFormBuilder_ == null) {
+        if (!(actionCase_ == 38)) {
+          action_ = com.ctrip.ferriswheel.proto.v1.UpdateForm.getDefaultInstance();
+        }
+        updateFormBuilder_ = new com.google.protobuf.SingleFieldBuilderV3<
+            com.ctrip.ferriswheel.proto.v1.UpdateForm, com.ctrip.ferriswheel.proto.v1.UpdateForm.Builder, com.ctrip.ferriswheel.proto.v1.UpdateFormOrBuilder>(
+                (com.ctrip.ferriswheel.proto.v1.UpdateForm) action_,
+                getParentForChildren(),
+                isClean());
+        action_ = null;
+      }
+      actionCase_ = 38;
+      onChanged();;
+      return updateFormBuilder_;
+    }
+
+    private com.google.protobuf.SingleFieldBuilderV3<
+        com.ctrip.ferriswheel.proto.v1.SubmitForm, com.ctrip.ferriswheel.proto.v1.SubmitForm.Builder, com.ctrip.ferriswheel.proto.v1.SubmitFormOrBuilder> submitFormBuilder_;
+    /**
+     * <code>.ferriswheel.v1.SubmitForm submit_form = 39;</code>
+     */
+    public boolean hasSubmitForm() {
+      return actionCase_ == 39;
+    }
+    /**
+     * <code>.ferriswheel.v1.SubmitForm submit_form = 39;</code>
+     */
+    public com.ctrip.ferriswheel.proto.v1.SubmitForm getSubmitForm() {
+      if (submitFormBuilder_ == null) {
+        if (actionCase_ == 39) {
+          return (com.ctrip.ferriswheel.proto.v1.SubmitForm) action_;
+        }
+        return com.ctrip.ferriswheel.proto.v1.SubmitForm.getDefaultInstance();
+      } else {
+        if (actionCase_ == 39) {
+          return submitFormBuilder_.getMessage();
+        }
+        return com.ctrip.ferriswheel.proto.v1.SubmitForm.getDefaultInstance();
+      }
+    }
+    /**
+     * <code>.ferriswheel.v1.SubmitForm submit_form = 39;</code>
+     */
+    public Builder setSubmitForm(com.ctrip.ferriswheel.proto.v1.SubmitForm value) {
+      if (submitFormBuilder_ == null) {
+        if (value == null) {
+          throw new NullPointerException();
+        }
+        action_ = value;
+        onChanged();
+      } else {
+        submitFormBuilder_.setMessage(value);
+      }
+      actionCase_ = 39;
+      return this;
+    }
+    /**
+     * <code>.ferriswheel.v1.SubmitForm submit_form = 39;</code>
+     */
+    public Builder setSubmitForm(
+        com.ctrip.ferriswheel.proto.v1.SubmitForm.Builder builderForValue) {
+      if (submitFormBuilder_ == null) {
+        action_ = builderForValue.build();
+        onChanged();
+      } else {
+        submitFormBuilder_.setMessage(builderForValue.build());
+      }
+      actionCase_ = 39;
+      return this;
+    }
+    /**
+     * <code>.ferriswheel.v1.SubmitForm submit_form = 39;</code>
+     */
+    public Builder mergeSubmitForm(com.ctrip.ferriswheel.proto.v1.SubmitForm value) {
+      if (submitFormBuilder_ == null) {
+        if (actionCase_ == 39 &&
+            action_ != com.ctrip.ferriswheel.proto.v1.SubmitForm.getDefaultInstance()) {
+          action_ = com.ctrip.ferriswheel.proto.v1.SubmitForm.newBuilder((com.ctrip.ferriswheel.proto.v1.SubmitForm) action_)
+              .mergeFrom(value).buildPartial();
+        } else {
+          action_ = value;
+        }
+        onChanged();
+      } else {
+        if (actionCase_ == 39) {
+          submitFormBuilder_.mergeFrom(value);
+        }
+        submitFormBuilder_.setMessage(value);
+      }
+      actionCase_ = 39;
+      return this;
+    }
+    /**
+     * <code>.ferriswheel.v1.SubmitForm submit_form = 39;</code>
+     */
+    public Builder clearSubmitForm() {
+      if (submitFormBuilder_ == null) {
+        if (actionCase_ == 39) {
+          actionCase_ = 0;
+          action_ = null;
+          onChanged();
+        }
+      } else {
+        if (actionCase_ == 39) {
+          actionCase_ = 0;
+          action_ = null;
+        }
+        submitFormBuilder_.clear();
+      }
+      return this;
+    }
+    /**
+     * <code>.ferriswheel.v1.SubmitForm submit_form = 39;</code>
+     */
+    public com.ctrip.ferriswheel.proto.v1.SubmitForm.Builder getSubmitFormBuilder() {
+      return getSubmitFormFieldBuilder().getBuilder();
+    }
+    /**
+     * <code>.ferriswheel.v1.SubmitForm submit_form = 39;</code>
+     */
+    public com.ctrip.ferriswheel.proto.v1.SubmitFormOrBuilder getSubmitFormOrBuilder() {
+      if ((actionCase_ == 39) && (submitFormBuilder_ != null)) {
+        return submitFormBuilder_.getMessageOrBuilder();
+      } else {
+        if (actionCase_ == 39) {
+          return (com.ctrip.ferriswheel.proto.v1.SubmitForm) action_;
+        }
+        return com.ctrip.ferriswheel.proto.v1.SubmitForm.getDefaultInstance();
+      }
+    }
+    /**
+     * <code>.ferriswheel.v1.SubmitForm submit_form = 39;</code>
+     */
+    private com.google.protobuf.SingleFieldBuilderV3<
+        com.ctrip.ferriswheel.proto.v1.SubmitForm, com.ctrip.ferriswheel.proto.v1.SubmitForm.Builder, com.ctrip.ferriswheel.proto.v1.SubmitFormOrBuilder> 
+        getSubmitFormFieldBuilder() {
+      if (submitFormBuilder_ == null) {
+        if (!(actionCase_ == 39)) {
+          action_ = com.ctrip.ferriswheel.proto.v1.SubmitForm.getDefaultInstance();
+        }
+        submitFormBuilder_ = new com.google.protobuf.SingleFieldBuilderV3<
+            com.ctrip.ferriswheel.proto.v1.SubmitForm, com.ctrip.ferriswheel.proto.v1.SubmitForm.Builder, com.ctrip.ferriswheel.proto.v1.SubmitFormOrBuilder>(
+                (com.ctrip.ferriswheel.proto.v1.SubmitForm) action_,
+                getParentForChildren(),
+                isClean());
+        action_ = null;
+      }
+      actionCase_ = 39;
+      onChanged();;
+      return submitFormBuilder_;
     }
     @java.lang.Override
     public final Builder setUnknownFields(

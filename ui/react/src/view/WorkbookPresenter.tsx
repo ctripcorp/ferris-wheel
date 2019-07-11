@@ -13,24 +13,28 @@ import './WorkbookPresenter.css';
 interface WorkbookPresenterProps extends React.ClassAttributes<WorkbookPresenter> {
     workbook: Workbook;
     service: Service;
+    defaultSheet?: string;
     className?: string;
+    beforeAction?: (action: Action) => boolean;
+    afterAction?: (action: Action) => void;
 }
 
 interface WorkbookPresenterState {
-    txId: number;
+    respTxId: number;
     message: string;
     serviceStatus: string;
     showMask: boolean;
 }
 
 class WorkbookPresenter extends React.Component<WorkbookPresenterProps, WorkbookPresenterState> implements ActionHerald {
+    private reqTxId = 0;
     protected listeners: Set<ActionHandler> = new Set();
 
     constructor(props: WorkbookPresenterProps) {
         super(props);
 
         this.state = {
-            txId: 0,
+            respTxId: 0,
             message: '',
             serviceStatus: '就绪',
             showMask: false
@@ -50,21 +54,35 @@ class WorkbookPresenter extends React.Component<WorkbookPresenterProps, Workbook
     }
 
     protected handleAction(action: Action) {
+        if (typeof this.props.beforeAction !== "undefined") {
+            if (!this.props.beforeAction(action)) {
+                return;
+            }
+        }
+
+        this.doHandleAction(action);
+
+        if (typeof this.props.afterAction !== "undefined") {
+            this.props.afterAction(action);
+        }
+    }
+
+    private doHandleAction(action: Action) {
         // console.log('handleAction', action);
         // ignore local actions such as asset been selected.
         if (action.isLocalAction()) {
             return;
         }
-        // Workbook presenter only deal with execute query action.
+        // Workbook presenter only deal with submit form action.
         // And there supposed to be no other remote actions from WorkbookView.
-        if (typeof action.executeQuery === 'undefined') {
+        if (typeof action.submitForm === 'undefined') {
             // throw new Error('Illegal action.');
             return;
         }
 
-        const request = new EditRequest(this.state.txId + 1, action);
+        const request = new EditRequest(++this.reqTxId, action);
         this.setState({
-            txId: request.txId,
+            respTxId: request.txId,
             message: `服务请求中，txId=${request.txId}…`,
             serviceStatus: "忙碌…",
             showMask: true,
@@ -77,8 +95,6 @@ class WorkbookPresenter extends React.Component<WorkbookPresenterProps, Workbook
     }
 
     protected onServiceOk(resp: EditResponse) {
-        // make sure resp is an EditResponse instance.
-        resp = EditResponse.deserialize(resp);
         if (resp.statusCode === 0) {
             if (typeof resp.changes !== 'undefined') {
                 this.applyChanges(resp.changes.actions);
@@ -108,6 +124,7 @@ class WorkbookPresenter extends React.Component<WorkbookPresenterProps, Workbook
                 <WorkbookView
                     className={this.props.className}
                     workbook={this.props.workbook}
+                    defaultSheet={this.props.defaultSheet}
                     editable={false}
                     onAction={this.handleAction}
                     herald={this} />

@@ -3,6 +3,7 @@ import SheetAsset from '../model/SheetAsset';
 import TableView from './TableView';
 import ChartView from './ChartView';
 import TextView from './TextView';
+import FormView from './FormView';
 import SharedViewProps from './SharedViewProps';
 import Action from '../action/Action';
 import ActionHandler from '../action/ActionHandler';
@@ -22,9 +23,7 @@ class AssetView extends React.Component<AssetViewProps> implements ActionHerald 
 
         this.onApplyAction = this.onApplyAction.bind(this);
         this.onRequestAction = this.onRequestAction.bind(this);
-    }
 
-    public componentDidMount() {
         if (typeof this.props.herald !== 'undefined') {
             this.props.herald.subscribe(this.onApplyAction);
         }
@@ -65,31 +64,45 @@ class AssetView extends React.Component<AssetViewProps> implements ActionHerald 
             herald: this,
         }
 
+        let specificAsset;
+
         if (typeof asset.table !== 'undefined') {
-            return (
+            specificAsset = (
                 <TableView
                     {...commonProps}
-                    table={asset.table} />
+                    table={asset.table}
+                    controlPortal={this.props.controlPortal} />
             );
         } else if (typeof asset.chart !== 'undefined') {
-            return (
+            specificAsset = (
                 <ChartView
                     {...commonProps}
-                    chart={asset.chart} />
+                    chart={asset.chart}
+                    controlPortal={this.props.controlPortal} />
             );
         } else if (typeof asset.text !== 'undefined') {
-            return (
+            specificAsset = (
                 <TextView
                     {...commonProps}
-                    text={asset.text} />
+                    text={asset.text}
+                    controlPortal={this.props.controlPortal} />
+            );
+        } else if (typeof asset.form !== 'undefined') {
+            specificAsset = (
+                <FormView
+                    {...commonProps}
+                    form={asset.form}
+                    controlPortal={this.props.controlPortal} />
             );
         } else { // maybe should just throw error
-            return (
+            specificAsset = (
                 <div {...commonProps}>
                     <p className="alert">Invalid asset!</p>
                 </div>
             );
         }
+
+        return specificAsset;
     }
 }
 
