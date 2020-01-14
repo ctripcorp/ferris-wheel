@@ -31,25 +31,14 @@ import java.io.Serializable;
 public class NameReference extends AbstractReference implements Serializable {
     private String targetName;
     private long targetId = Asset.UNSPECIFIED_ASSET_ID;
-    private boolean valid = true;
 
     public NameReference() {
         super(null, null);
     }
 
     public NameReference(String sheetName, String assetName, String targetName) {
-        this(sheetName, assetName, targetName, Asset.UNSPECIFIED_ASSET_ID, true);
-    }
-
-    public NameReference(String sheetName,
-                         String assetName,
-                         String targetName,
-                         long targetId,
-                         boolean valid) {
         super(sheetName, assetName);
         this.targetName = targetName;
-        this.targetId = targetId;
-        this.valid = valid;
     }
 
     public String getTargetName() {
@@ -69,11 +58,10 @@ public class NameReference extends AbstractReference implements Serializable {
     }
 
     public boolean isValid() {
-        return valid;
-    }
-
-    public void setValid(boolean valid) {
-        this.valid = valid;
+        // FIXME it is not clear that should a name reference acts as exactly hooked reference or
+        //  just a name for resolve in the future (like phantom reference), or both should be supported?
+        //  For now ignore target id.
+        return isAlive();
     }
 
 }

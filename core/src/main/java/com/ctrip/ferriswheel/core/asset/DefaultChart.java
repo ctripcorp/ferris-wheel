@@ -11,12 +11,13 @@ import com.ctrip.ferriswheel.common.view.Placement;
 import com.ctrip.ferriswheel.core.action.UpdateChart;
 import com.ctrip.ferriswheel.core.bean.AxisImpl;
 import com.ctrip.ferriswheel.core.bean.ChartData;
+import com.ctrip.ferriswheel.core.formula.CellReferenceElement;
 import com.ctrip.ferriswheel.core.formula.FormulaElement;
 import com.ctrip.ferriswheel.core.formula.RangeReferenceElement;
 import com.ctrip.ferriswheel.core.formula.ReferenceElement;
-import com.ctrip.ferriswheel.core.formula.CellReferenceElement;
 import com.ctrip.ferriswheel.core.ref.CellReference;
 import com.ctrip.ferriswheel.core.ref.RangeReference;
+import com.ctrip.ferriswheel.core.ref.TableRange;
 import com.ctrip.ferriswheel.core.view.ChartLayout;
 import com.ctrip.ferriswheel.core.view.LayoutImpl;
 
@@ -35,8 +36,8 @@ public class DefaultChart extends SheetAssetNode implements Chart {
     private final ChartLayout layout = new ChartLayout();
     private DefaultChartBinder binder;
 
-    DefaultChart(String name, String type, DefaultSheet sheet) {
-        super(name, sheet);
+    DefaultChart(String name, String type, AssetManager assetManager) {
+        super(name, assetManager);
         this.type = type;
         this.title = new ValueNode(getAssetManager(), Value.BLANK, null);
         this.categories = new ValueNode(getAssetManager(), Value.BLANK, null);
@@ -77,6 +78,7 @@ public class DefaultChart extends SheetAssetNode implements Chart {
 
     void setType(String type) {
         this.type = type;
+        markDirty();
     }
 
     @Override
@@ -127,6 +129,7 @@ public class DefaultChart extends SheetAssetNode implements Chart {
 
     public void setxAxis(AxisImpl xAxis) {
         this.xAxis = xAxis;
+        markDirty(); // TODO modifications via AxisImpl object itself is not tracked.
     }
 
     @Override
@@ -136,6 +139,7 @@ public class DefaultChart extends SheetAssetNode implements Chart {
 
     public void setyAxis(AxisImpl yAxis) {
         this.yAxis = yAxis;
+        markDirty(); // TODO refer setxAxis
     }
 
     @Override
@@ -145,10 +149,11 @@ public class DefaultChart extends SheetAssetNode implements Chart {
 
     public void setzAxis(AxisImpl zAxis) {
         this.zAxis = zAxis;
+        markDirty(); // TODO refer setxAxis
     }
 
     @Override
-    public LayoutImpl getLayout() {
+    public ChartLayout getLayout() {
         return layout;
     }
 
@@ -160,12 +165,12 @@ public class DefaultChart extends SheetAssetNode implements Chart {
     void setBinder(DefaultChartBinder binder) {
         if (this.binder != null) {
             unbindChild(this.binder);
-            removeDependency(this.binder.getData());
+//            removeDependency(this.binder.getData());
         }
         this.binder = binder;
         if (this.binder != null) {
             bindChild(this.binder);
-            addDependency(this.binder.getData());
+//            addDependency(this.binder.getData());
         }
     }
 
@@ -175,13 +180,13 @@ public class DefaultChart extends SheetAssetNode implements Chart {
         }
 
         ValueNode data = binder.getData();
-        if (!data.isFormula() || data.getFormulaElements().length != 1
-                || !(data.getFormulaElements()[0] instanceof ReferenceElement)) {
+        if (!data.isFormula() || data.getFormula().getElementCount() != 1
+                || !(data.getFormula().getElement(0) instanceof ReferenceElement)) {
             throw new RuntimeException("Data area must be a formula with single reference element.");
         }
 
         RangeReference rangeReference = null;
-        FormulaElement elem = data.getFormulaElements()[0];
+        FormulaElement elem = data.getFormula().getElement(0);
         if (elem instanceof CellReferenceElement) {
             CellReference cellReference = ((CellReferenceElement) elem).getCellReference();
             rangeReference = new RangeReference(cellReference, cellReference);
@@ -192,11 +197,17 @@ public class DefaultChart extends SheetAssetNode implements Chart {
         if (rangeReference.getSheetName() != null) {
             sheet = sheet.getWorkbook().getSheet(rangeReference.getSheetName());
         }
-        if (sheet == null) {
-            throw new RuntimeException("Failed to get referred sheet.");
+        if (sheet == null) { // TODO mark illegal reference?
+            clearData();
+            getSheet().publicly(new UpdateChart(getSheet().getName(),
+                    getName(), new ChartData(this)), () -> {
+                // just publish the action
+            });
+            // throw new RuntimeException("Failed to get referred table.");
+            return;
         }
         DefaultTable table = sheet.getAsset(rangeReference.getAssetName());
-        if (table == null) {
+        if (table == null) { // TODO mark illegal reference?
             clearData();
             getSheet().publicly(new UpdateChart(getSheet().getName(),
                     getName(), new ChartData(this)), () -> {
@@ -206,30 +217,13 @@ public class DefaultChart extends SheetAssetNode implements Chart {
             return;
         }
 
-        int left = rangeReference.getLeft();
-        int top = rangeReference.getTop();
-        int right = rangeReference.getRight();
-        int bottom = rangeReference.getBottom();
-
-        if (left == -1) {
-            left = 0;
-        }
-        if (top == -1) {
-            top = 0;
-        }
-        if (right == -1) {
-            right = table.getColumnCount() - 1;
-        }
-        if (bottom == -1) {
-            bottom = table.getRowCount() - 1;
-        }
-
-        if (left > right || top > bottom) {
+        TableRange validRange = rangeReference.getOverlappedRectangle(table);
+        if (validRange == null) {
             clearData();
         } else if (binder.getOrientation() == Orientation.HORIZONTAL) {
-            bindHorizontally(table, left, top, right, bottom);
+            bindHorizontally(table, validRange.getLeft(), validRange.getTop(), validRange.getRight(), validRange.getBottom());
         } else if (binder.getOrientation() == Orientation.VERTICAL) {
-            bindVertically(table, left, top, right, bottom);
+            bindVertically(table, validRange.getLeft(), validRange.getTop(), validRange.getRight(), validRange.getBottom());
         }
 
         getSheet().publicly(new UpdateChart(getSheet().getName(),
@@ -412,4 +406,9 @@ public class DefaultChart extends SheetAssetNode implements Chart {
         }
     }
 
+    @Override
+    protected EvaluationState doEvaluate(EvaluationContext context) {
+        rebindIfPossible();
+        return EvaluationState.DONE;
+    }
 }

@@ -43,8 +43,8 @@ public class DefaultForm extends SheetAssetNode implements Form {
     private final FormLayout layout = new FormLayout();
     private final NamedAssetList<DefaultFormField> fields;
 
-    DefaultForm(String name, DefaultSheet sheet) {
-        super(name, sheet);
+    DefaultForm(String name, AssetManager assetManager) {
+        super(name, assetManager);
         this.fields = new NamedAssetList<>(this);
     }
 
@@ -77,11 +77,10 @@ public class DefaultForm extends SheetAssetNode implements Form {
         if (fields.get(fieldData.getName()) != null) {
             throw new IllegalArgumentException("Duplicated field name: " + fieldData.getName());
         }
-        DefaultFormField field = new DefaultFormField(fieldData.getName(), this);
+        DefaultFormField field = new DefaultFormField(fieldData.getName(), getAssetManager());
         field.fillFieldData(fieldData);
         getSheet().publicly(new UpdateForm(getSheet().getName(), getName(), this), () -> {
             fields.add(field);
-            getSheet().getWorkbook().onAssetUpdate(this);
         });
     }
 
@@ -92,7 +91,6 @@ public class DefaultForm extends SheetAssetNode implements Form {
         }
         getSheet().publicly(new UpdateForm(getSheet().getName(), getName(), this), () -> {
             field.fillFieldData(fieldData);
-            getSheet().getWorkbook().onAssetUpdate(this);
         });
     }
 
@@ -106,7 +104,6 @@ public class DefaultForm extends SheetAssetNode implements Form {
         }
         getSheet().publicly(new UpdateForm(getSheet().getName(), getName(), this), () -> {
             field.setName(newName);
-            getSheet().getWorkbook().onAssetUpdate(this);
         });
     }
 
@@ -117,7 +114,6 @@ public class DefaultForm extends SheetAssetNode implements Form {
         getSheet().publicly(new UpdateForm(getSheet().getName(), getName(), this), () -> {
             DefaultFormField field = fields.remove(name);
             fields.add(index, field);
-            getSheet().getWorkbook().onAssetUpdate(this);
         });
     }
 
@@ -127,7 +123,6 @@ public class DefaultForm extends SheetAssetNode implements Form {
         }
         getSheet().publicly(new UpdateForm(getSheet().getName(), getName(), this), () -> {
             fields.remove(name);
-            getSheet().getWorkbook().onAssetUpdate(this);
         });
     }
 
@@ -141,11 +136,10 @@ public class DefaultForm extends SheetAssetNode implements Form {
     }
 
     public void submit(Map<String, Variant> params) {
-        DefaultWorkbook wb = getSheet().getWorkbook();
-        wb.withoutRefresh(() -> doSubmit(params));
-        wb.refreshIfNeeded();
+        doSubmit(params);
     }
 
+    // TODO improve submit procedure
     void doSubmit(Map<String, Variant> params) {
         Map<Long, ExecuteQuery> pendingQuerys = new HashMap<>();
         for (Map.Entry<String, Variant> pair : params.entrySet()) {
@@ -169,22 +163,23 @@ public class DefaultForm extends SheetAssetNode implements Form {
     private void updateOrCollectQuery(DefaultFormField field,
                                       DefaultFormFieldBinding binding,
                                       Map<Long, ExecuteQuery> pendingQuerys) {
-        Formula f = binding.getTargetRefHolder().getFormula();
-        if (f.getElements().length != 1) { // should be checked during update procedure.
+        Formula f = binding.getFormula();
+        if (f.getElementCount() != 1) { // should be checked during update procedure.
             throw new RuntimeException();
         }
-        FormulaElement elem = f.getElements()[0];
+        FormulaElement elem = f.getElement(0);
         if (elem instanceof CellReferenceElement) {
             CellReference ref = ((CellReferenceElement) elem).getCellReference();
-            if (ref.isValid()) {
-                DefaultCell cell = (DefaultCell) getAssetManager().get(ref.getCellId());
-                cell.getRow().getTable().setCellValue(cell.getRowIndex(), cell.getColumnIndex(), field.getValue());
+            DefaultCell cell = (DefaultCell) getAssetManager().getReferenceMaintainer().getReferredAsset(ref);
+            if (cell != null) {
+                // the way of setting cell value looks ugly, should refactor later.
+                cell.parent(DefaultTable.class).setCellValue(cell.getRowIndex(), cell.getColumnIndex(), field.getValue());
             }
 
         } else if (elem instanceof NameReferenceElement) {
             NameReference ref = ((NameReferenceElement) elem).getNameReference();
-            if (ref.isValid()) {
-                AssetNode target = (AssetNode) getAssetManager().get(ref.getTargetId());
+            AssetNode target = (AssetNode) getAssetManager().getReferenceMaintainer().getReferredAsset(ref);
+            if (target != null) {
                 DefaultQueryAutomaton queryAutomaton = target.parent(DefaultQueryAutomaton.class);
                 if (queryAutomaton == null) {
                     throw new RuntimeException("Unsupported binding target: " + target.getClass());
@@ -201,5 +196,13 @@ public class DefaultForm extends SheetAssetNode implements Form {
         } else {
             throw new RuntimeException("Unsupported reference type: " + elem.getClass());
         }
+    }
+
+    @Override
+    protected EvaluationState doEvaluate(EvaluationContext context) {
+        UpdateForm updateForm = new UpdateForm(getSheet().getName(), getName(), this);
+        getSheet().publicly(updateForm, () -> {
+        });
+        return EvaluationState.DONE;
     }
 }

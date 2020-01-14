@@ -1,15 +1,10 @@
 package com.ctrip.ferriswheel.core.asset;
 
 import com.ctrip.ferriswheel.common.Environment;
-import com.ctrip.ferriswheel.common.query.DataProvider;
-import com.ctrip.ferriswheel.common.query.DataQuery;
+import com.ctrip.ferriswheel.common.query.*;
 import com.ctrip.ferriswheel.common.table.Table;
-import com.ctrip.ferriswheel.common.util.DataSet;
-import com.ctrip.ferriswheel.common.util.ListDataSet;
-import com.ctrip.ferriswheel.common.variant.DefaultParameter;
-import com.ctrip.ferriswheel.common.variant.DynamicValue;
-import com.ctrip.ferriswheel.common.variant.Parameter;
-import com.ctrip.ferriswheel.common.variant.Value;
+import com.ctrip.ferriswheel.common.util.DataSetBuilder;
+import com.ctrip.ferriswheel.common.variant.*;
 import com.ctrip.ferriswheel.core.bean.DefaultEnvironment;
 import com.ctrip.ferriswheel.core.bean.TableAutomatonInfo;
 import com.ctrip.ferriswheel.core.loader.DefaultProviderManager;
@@ -34,6 +29,7 @@ public class TestQueryAutomatonCalc extends TestCase {
         DefaultSheet s1 = workbook.addSheet("s1");
         normalTable = (DefaultTable) s1.addAsset(Table.class, "normal");
         autoTable = (DefaultTable) s1.addAsset(Table.class, "auto");
+        workbook.refresh();
     }
 
     public void testCalcThroughQueryAutomaton() {
@@ -52,6 +48,7 @@ public class TestQueryAutomatonCalc extends TestCase {
                 null, null));
         normalTable.setCellFormula(0, 1, "auto!A1");
 
+        workbook.refresh();
         System.out.println(workbook);
 
         assertEquals(1, normalTable.getRowCount());
@@ -72,6 +69,7 @@ public class TestQueryAutomatonCalc extends TestCase {
         try {
             // auto->param2->normal!A1->normal!B1->auto!A1
             normalTable.setCellFormula(0, 0, "B1");
+            workbook.refresh(); // FIXME raise circular dependency exception while setting formula?
             fail("Expects circular dependency exception.");
         } catch (IllegalArgumentException e) {
         }
@@ -85,23 +83,23 @@ public class TestQueryAutomatonCalc extends TestCase {
         }
 
         @Override
-        public DataSet execute(DataQuery query) {
+        public QueryResult execute(DataQuery query, boolean forceRefresh) {
             final int rows = query.getParamNames().size() + 1;
             final int cols = 2;
 
-            ListDataSet.Builder dataSetBuilder = ListDataSet.newBuilder()
-                    .setColumnCount(2);
-            dataSetBuilder.newRecordBuilder()
+            DataSetBuilder dataSetBuilder = DataSetBuilder.withColumnCount(2);
+            dataSetBuilder.newRecord()
                     .set(0, Value.str("scheme"))
                     .set(1, Value.str(query.getScheme()))
                     .commit();
             for (String name : query.getParamNames()) {
-                dataSetBuilder.newRecordBuilder()
+                dataSetBuilder.newRecord()
                         .set(0, Value.str(name))
                         .set(1, query.getParam(name))
                         .commit();
             }
-            return dataSetBuilder.build();
+            return new ImmutableQueryResult(ErrorCodes.OK, "Ok",
+                    ImmutableCacheHint.newBuilder().build(), dataSetBuilder.build());
         }
     }
 }

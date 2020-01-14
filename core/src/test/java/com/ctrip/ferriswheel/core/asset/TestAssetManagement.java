@@ -53,7 +53,7 @@ public class TestAssetManagement extends TestCase {
         wb.removeSheet("sheet2");
         checkAssetMap(wb);
 
-        assertEquals(1, wb.getAssetManager().assetMap.size());
+        assertEquals(1, wb.assetMap.size());
     }
 
     public void testSheetAndTables() {
@@ -76,7 +76,7 @@ public class TestAssetManagement extends TestCase {
         sheet.removeAsset("table2");
         checkAssetMap(wb);
 
-        assertEquals(2, wb.getAssetManager().assetMap.size());
+        assertEquals(2, wb.assetMap.size());
     }
 
     public void testTableAndRows() {
@@ -244,7 +244,7 @@ public class TestAssetManagement extends TestCase {
     }
 
     void checkAssetMap(DefaultWorkbook wb) {
-        Map<Long, DefaultAssetManager.AssetReference> assetMap = wb.getAssetManager().assetMap;
+        Map<Long, DefaultWorkbook.AssetReference> assetMap = wb.assetMap;
         HashSet<Long> pendingAssetIds = new HashSet<>(assetMap.keySet());
         long id = wb.getAssetId();
         assertTrue(pendingAssetIds.remove(id));
@@ -260,7 +260,7 @@ public class TestAssetManagement extends TestCase {
         assertTrue(pendingAssetIds.isEmpty());
     }
 
-    void checkAssetMap(Map<Long, DefaultAssetManager.AssetReference> assetMap,
+    void checkAssetMap(Map<Long, DefaultWorkbook.AssetReference> assetMap,
                        Set<Long> pendingAssetIds, DefaultSheet sheet) {
         for (SheetAsset asset : sheet) {
             if (asset == null) {
@@ -282,8 +282,13 @@ public class TestAssetManagement extends TestCase {
         }
     }
 
-    void checkAssetMap(Map<Long, DefaultAssetManager.AssetReference> assetMap,
+    void checkAssetMap(Map<Long, DefaultWorkbook.AssetReference> assetMap,
                        Set<Long> pendingAssetIds, DefaultTable table) {
+        GridData grid = table.getGridData();
+        assertEquals(table, grid.getParent());
+        assertTrue(pendingAssetIds.remove(grid.getAssetId()));
+        assertEquals(1, assetMap.get(grid.getAssetId()).referenceCount.get());
+
         for (Map.Entry<Integer, Row> rowEntry : table) {
             DefaultRow row = (DefaultRow) rowEntry.getValue();
             assertEquals(table, row.getTable());
@@ -291,6 +296,12 @@ public class TestAssetManagement extends TestCase {
             assertEquals(1, assetMap.get(row.getAssetId()).referenceCount.get());
             checkAssetMap(assetMap, pendingAssetIds, row);
         }
+
+        HotAreaManager hotAreaManager = table.getHotAreaManager();
+        assertEquals(table, hotAreaManager.getParent());
+        assertTrue(pendingAssetIds.remove(hotAreaManager.getAssetId()));
+        assertEquals(1, assetMap.get(hotAreaManager.getAssetId()).referenceCount.get());
+        checkAssetMap(assetMap, pendingAssetIds, hotAreaManager);
 
         Automaton automaton = table.getAutomaton();
         if (automaton != null) {
@@ -301,7 +312,7 @@ public class TestAssetManagement extends TestCase {
         }
     }
 
-    void checkAssetMap(Map<Long, DefaultAssetManager.AssetReference> assetMap,
+    void checkAssetMap(Map<Long, DefaultWorkbook.AssetReference> assetMap,
                        Set<Long> pendingAssetIds, Row row) {
         for (Map.Entry<Integer, Cell> cellEntry : row) {
             Cell cell = cellEntry.getValue();
@@ -311,7 +322,7 @@ public class TestAssetManagement extends TestCase {
         }
     }
 
-    void checkAssetMap(Map<Long, DefaultAssetManager.AssetReference> assetMap,
+    void checkAssetMap(Map<Long, DefaultWorkbook.AssetReference> assetMap,
                        Set<Long> pendingAssetIds, Automaton automaton) {
         if (automaton instanceof DefaultQueryAutomaton) {
             DefaultQueryTemplate template = ((DefaultQueryAutomaton) automaton).getTemplate();
@@ -333,7 +344,17 @@ public class TestAssetManagement extends TestCase {
         }
     }
 
-    void checkAssetMap(Map<Long, DefaultAssetManager.AssetReference> assetMap,
+    void checkAssetMap(Map<Long, DefaultWorkbook.AssetReference> assetMap,
+                       Set<Long> pendingAssetIds, HotAreaManager hotAreaManager) {
+        for (AssetNode child : hotAreaManager.getChildren()) {
+            assertTrue(child instanceof HotAreaDelegate);
+            assertEquals(hotAreaManager, child.getParent());
+            assertTrue(pendingAssetIds.remove(child.getAssetId()));
+            assertEquals(1, assetMap.get(child.getAssetId()).referenceCount.get());
+        }
+    }
+
+    void checkAssetMap(Map<Long, DefaultWorkbook.AssetReference> assetMap,
                        Set<Long> pendingAssetIds, DefaultChart chart) {
         assertEquals(chart, chart.getTitle().getParent());
         assertTrue(pendingAssetIds.remove(chart.getTitle().getAssetId()));
@@ -351,7 +372,7 @@ public class TestAssetManagement extends TestCase {
         }
     }
 
-    void checkAssetMap(Map<Long, DefaultAssetManager.AssetReference> assetMap,
+    void checkAssetMap(Map<Long, DefaultWorkbook.AssetReference> assetMap,
                        Set<Long> pendingAssetIds, DefaultDataSeries series) {
         if (series.getName() != null) {
             assertEquals(series, series.getName().getParent());

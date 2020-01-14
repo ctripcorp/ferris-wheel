@@ -1,7 +1,7 @@
 /*
  * MIT License
  *
- * Copyright (c) 2018 Ctrip.com
+ * Copyright (c) 2018-2019 Ctrip.com
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -20,30 +20,16 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
- *
  */
 
-package com.ctrip.ferriswheel.common.util;
+package com.ctrip.ferriswheel.core.asset;
 
-import com.ctrip.ferriswheel.common.variant.VariantType;
+import com.ctrip.ferriswheel.core.formula.eval.ReferenceResolver;
+import com.ctrip.ferriswheel.core.ref.CellReference;
 
-public class ColumnMetaDataImpl implements ColumnMetaData {
-    private final String name;
-    private final VariantType type;
+public interface ReferenceMaintainer extends ReferenceResolver {
+    void resolveFormulas(AssetNode asset);
 
-    public ColumnMetaDataImpl(String name, VariantType type) {
-        this.name = name;
-        this.type = type;
-    }
-
-    @Override
-    public String getName() {
-        return name;
-    }
-
-    @Override
-    public VariantType getType() {
-        return type;
-    }
+    void resolveFormula(ValueNode valueNode);
 
 }

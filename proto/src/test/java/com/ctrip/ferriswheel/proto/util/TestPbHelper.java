@@ -4,13 +4,13 @@ import com.ctrip.ferriswheel.common.Sheet;
 import com.ctrip.ferriswheel.common.Workbook;
 import com.ctrip.ferriswheel.common.chart.Chart;
 import com.ctrip.ferriswheel.common.chart.DataSeries;
-import com.ctrip.ferriswheel.common.query.DataProvider;
-import com.ctrip.ferriswheel.common.query.DataQuery;
+import com.ctrip.ferriswheel.common.query.*;
 import com.ctrip.ferriswheel.common.table.Table;
 import com.ctrip.ferriswheel.common.util.DataSet;
-import com.ctrip.ferriswheel.common.util.ListDataSet;
+import com.ctrip.ferriswheel.common.util.DataSetBuilder;
 import com.ctrip.ferriswheel.common.variant.*;
 import com.ctrip.ferriswheel.core.asset.DefaultQueryAutomaton;
+import com.ctrip.ferriswheel.core.asset.DefaultWorkbook;
 import com.ctrip.ferriswheel.core.asset.FilingClerk;
 import com.ctrip.ferriswheel.core.bean.ChartData;
 import com.ctrip.ferriswheel.core.bean.DefaultEnvironment;
@@ -44,24 +44,29 @@ public class TestPbHelper extends TestCase {
             }
 
             @Override
-            public DataSet execute(DataQuery query) throws IOException {
-                return ListDataSet.newBuilder()
-                        .setColumnCount(1)
-                        .newRecordBuilder()
+            public QueryResult execute(DataQuery query, boolean forceRefresh) throws IOException {
+                DataSet dataSet = DataSetBuilder.withColumnCount(1)
+                        .newRecord()
                         .set(0, Value.str("hello world"))
                         .commit()
                         .build();
+                return new ImmutableQueryResult(ErrorCodes.OK, "Ok",
+                        ImmutableCacheHint.newBuilder().build(), dataSet);
             }
         });
         DefaultEnvironment env = new DefaultEnvironment.Builder()
                 .setProviderManager(pm)
                 .build();
 
-        Table table = new FilingClerk(env).createWorkbook("test-workbook").addSheet("sheet1").addAsset(Table.class, "table1");
+        DefaultWorkbook workbook = new FilingClerk(env).createWorkbook("test-workbook");
+        Table table = workbook.addSheet("sheet1").addAsset(Table.class, "table1");
         table.addRows(3);
         table.addColumns(1);
         table.setCellFormula(0, 0, "2^10");
         table.setCellFormula(2, 0, "A1*4");
+
+        workbook.refresh();
+
         com.ctrip.ferriswheel.proto.v1.SheetAsset asset = PbHelper.pb(table);
         assertEquals(com.ctrip.ferriswheel.proto.v1.SheetAsset.AssetCase.TABLE, asset.getAssetCase());
         com.ctrip.ferriswheel.proto.v1.Table t = asset.getTable();
@@ -75,6 +80,9 @@ public class TestPbHelper extends TestCase {
         builtinParams.put("Greeting", new DefaultParameter("Greeting", new DynamicValue("\"hello world\"")));
         builtinParams.put("Goodbye", new DefaultParameter("Goodbye", new DynamicValue("\"bye!\"")));
         table.automate(new TableAutomatonInfo.QueryAutomatonInfo(new TableAutomatonInfo.QueryTemplateInfo(scheme, builtinParams)));
+
+        workbook.refresh();
+
         asset = PbHelper.pb(table);
         t = asset.getTable();
         assertTrue(t.hasAutomaton());
@@ -97,8 +105,9 @@ public class TestPbHelper extends TestCase {
     }
 
     public void testChartAndSeriesToProto() {
-        Sheet sheet1 = new FilingClerk(new DefaultEnvironment.Builder().build())
-                .createWorkbook("test-workbook").addSheet("sheet1");
+        DefaultWorkbook workbook = new FilingClerk(new DefaultEnvironment.Builder().build())
+                .createWorkbook("test-workbook");
+        Sheet sheet1 = workbook.addSheet("sheet1");
         Table table1 = sheet1.addAsset(Table.class, "table1");
         table1.addRows(1);
         table1.addColumns(3);
@@ -113,6 +122,9 @@ public class TestPbHelper extends TestCase {
                                 new DynamicValue("table1!A1"),
                                 null,
                                 new DynamicValue("table1!B1:C1")))));
+
+        workbook.refresh();
+
         com.ctrip.ferriswheel.proto.v1.SheetAsset asset = PbHelper.pb(chart1);
         assertEquals(com.ctrip.ferriswheel.proto.v1.SheetAsset.AssetCase.CHART, asset.getAssetCase());
         com.ctrip.ferriswheel.proto.v1.Chart c1 = asset.getChart();
@@ -132,12 +144,16 @@ public class TestPbHelper extends TestCase {
     }
 
     public void testRowToProto() {
-        Table table = new FilingClerk(new DefaultEnvironment.Builder().build())
-                .createWorkbook("test-workbook").addSheet("sheet1").addAsset(Table.class, "table1");
+        DefaultWorkbook workbook = new FilingClerk(new DefaultEnvironment.Builder().build())
+                .createWorkbook("test-workbook");
+        Table table = workbook.addSheet("sheet1").addAsset(Table.class, "table1");
         table.addRows(3);
         table.addColumns(3);
         table.setCellFormula(2, 0, "2^10");
         table.setCellFormula(2, 2, "A3*4");
+
+        workbook.refresh();
+
         com.ctrip.ferriswheel.proto.v1.Row row = PbHelper.pb(table.getRow(2), 2);
         assertEquals(2, row.getRowIndex());
         assertEquals(2, row.getCellsCount());
@@ -148,11 +164,15 @@ public class TestPbHelper extends TestCase {
     }
 
     public void testCellToProto() {
-        Table table = new FilingClerk(new DefaultEnvironment.Builder().build())
-                .createWorkbook("test-workbook").addSheet("sheet1").addAsset(Table.class, "table1");
+        DefaultWorkbook workbook = new FilingClerk(new DefaultEnvironment.Builder().build())
+                .createWorkbook("test-workbook");
+        Table table = workbook.addSheet("sheet1").addAsset(Table.class, "table1");
         table.addRows(3);
         table.addColumns(3);
         table.setCellFormula(2, 2, "2^10");
+
+        workbook.refresh();
+
         com.ctrip.ferriswheel.proto.v1.Cell cell = PbHelper.pb(table.getCell(2, 2), 2);
         assertEquals(2, cell.getColumnIndex());
         com.ctrip.ferriswheel.proto.v1.UnionValue v = cell.getValue();
@@ -210,15 +230,16 @@ public class TestPbHelper extends TestCase {
             }
 
             @Override
-            public DataSet execute(DataQuery query) throws IOException {
+            public QueryResult execute(DataQuery query, boolean forceRefresh) throws IOException {
                 System.out.println("Filling table by fake provider.");
-                return ListDataSet.newBuilder()
-                        .setColumnCount(2)
-                        .newRecordBuilder()
+                DataSet dataSet = DataSetBuilder.withColumnCount(2)
+                        .newRecord()
                         .set(0, Value.dec(13))
                         .set(1, Value.dec(23))
                         .commit()
                         .build();
+                return new ImmutableQueryResult(ErrorCodes.OK, "Ok",
+                        ImmutableCacheHint.newBuilder().build(), dataSet);
             }
         });
 
@@ -267,8 +288,12 @@ public class TestPbHelper extends TestCase {
         t2.addColumns(1);
         t2.setCellValue(0, 0, Value.dec(2));
 
+        wb.refresh();
+
         com.ctrip.ferriswheel.proto.v1.Workbook proto = PbHelper.pb(wb);
         wb = PbHelper.bean(env, proto);
+
+        wb.refresh();
 
         // assertions
         assertEquals(1, wb.getSheetCount());

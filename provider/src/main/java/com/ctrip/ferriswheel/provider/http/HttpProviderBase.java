@@ -23,12 +23,13 @@
  *
  */
 
-package com.ctrip.ferriswheel.provider.restful;
+package com.ctrip.ferriswheel.provider.http;
 
-import com.ctrip.ferriswheel.common.query.DataProvider;
-import com.ctrip.ferriswheel.common.query.DataQuery;
+import com.ctrip.ferriswheel.common.query.*;
 import com.ctrip.ferriswheel.common.util.DataSet;
+import com.ctrip.ferriswheel.common.variant.ErrorCodes;
 import com.ctrip.ferriswheel.common.variant.Variant;
+import com.ctrip.ferriswheel.provider.DataProviderSupport;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -40,8 +41,8 @@ import java.util.*;
 /**
  * @author liuhaifeng
  */
-public abstract class RestfulProviderBase implements DataProvider {
-    private static final Logger LOG = LoggerFactory.getLogger(RestfulProviderBase.class);
+public abstract class HttpProviderBase extends DataProviderSupport implements DataProvider {
+    private static final Logger LOG = LoggerFactory.getLogger(HttpProviderBase.class);
 
     public static final String HTTP_METHOD_GET = "GET";
     public static final String HTTP_METHOD_POST = "POST";
@@ -58,14 +59,14 @@ public abstract class RestfulProviderBase implements DataProvider {
     private volatile int connTimeoutInMillis = DEFAULT_CONN_TIMEOUT_IN_MILLIS;
     private volatile int readTimeoutInMillis = DEFAULT_READ_TIMEOUT_IN_MILLIS;
 
-    // TODO use LRU cache instead
-    // TODO cache should be expired after a certain duration.
-    private transient LinkedHashMap<RestfulRequest, String> cachedResponse = new LinkedHashMap<>();
+    private HttpClient httpClient;
 
     @Override
-    public DataSet execute(DataQuery query) throws IOException {
-        String response = executeRestfulRequest(createRequest(query));
-        return parseToDataSet(query, response);
+    protected QueryResult doExecute(DataQuery query) throws IOException {
+        HttpResponse response = executeRequest(createRequest(query));
+        DataSet dataSet = parseToDataSet(query, response);
+        CacheHint cacheHint = createCacheHint(query, response);
+        return new ImmutableQueryResult(ErrorCodes.OK, "Ok", cacheHint, dataSet);
     }
 
     /**
@@ -74,7 +75,7 @@ public abstract class RestfulProviderBase implements DataProvider {
      * @param query
      * @return
      */
-    protected RestfulRequest createRequest(DataQuery query) {
+    protected HttpRequest createRequest(DataQuery query) {
         String url = query.getString(PARAM_URL);
         String method = query.getString(PARAM_METHOD);
         String body = query.getString(PARAM_BODY);
@@ -85,42 +86,46 @@ public abstract class RestfulProviderBase implements DataProvider {
             method = method.toUpperCase();
         }
 
+        SimpleHttpRequest request = new SimpleHttpRequest(url, method, body);
+
         Variant headersVar = query.getParam(PARAM_HEADERS);
-        List<RequestHeader> headerList = new ArrayList<>(headersVar == null ? 0 : headersVar.itemCount());
         for (int i = 0; headersVar != null && i < headersVar.itemCount(); i++) {
             String header = headersVar.item(i).strValue();
             int pos = header.indexOf(':');
             String name = header.substring(0, pos).trim();
             String value = header.substring(pos + 1).trim();
-            headerList.add(new RequestHeader(name, value));
+            request.addHeader(name, value);
         }
-        return new RestfulRequest(url, method, headerList, body);
+
+        return request;
     }
 
-    protected String executeRestfulRequest(RestfulRequest request) throws IOException {
-        String response = getCachedResponse(request);
-        if (response != null) {
-            LOG.info("Serve cached response of request: " + request.getUrl());
-            return response;
-        }
-
-        LOG.info("Executing RESTful request: " + request.getUrl());
+    protected HttpResponse executeRequest(HttpRequest request) throws IOException {
+        LOG.info("Executing HTTP request: " + request.getUrl());
         long start = System.currentTimeMillis();
         try {
-            return executeRestfulRequestWithoutCache(request);
+            return doExecuteRequest(request);
         } finally {
             LOG.info("Execution done within {} milliseconds.", System.currentTimeMillis() - start);
         }
 
     }
 
-    protected String executeRestfulRequestWithoutCache(RestfulRequest request) throws IOException {
+    protected HttpResponse doExecuteRequest(HttpRequest request) throws IOException {
+        HttpClient client = getHttpClient();
+        if (client != null) {
+            return client.execute(request);
+        }
+
         HttpURLConnection conn = (HttpURLConnection) new URL(request.getUrl()).openConnection();
         conn.setRequestMethod(request.getMethod());
 
         // headers
-        for (RequestHeader header : request.getHeaders()) {
-            conn.setRequestProperty(header.getName(), header.getValue());
+        for (Map.Entry<String, List<String>> header : request.getHeaders().entrySet()) {
+            String name = header.getKey();
+            for (String value : header.getValue()) {
+                conn.addRequestProperty(name, value);
+            }
         }
 
         // output/input flags
@@ -147,41 +152,14 @@ public abstract class RestfulProviderBase implements DataProvider {
             throw new IOException("Failed to proceed HTTP request, response code: " + sc);
         }
 
-        // read data
-        StringBuilder sb = new StringBuilder();
-        char[] cbuf = new char[4096];
-        int n;
-        try (BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream()))) {
-            while ((n = reader.read(cbuf)) != -1) {
-                sb.append(cbuf, 0, n);
-            }
-            String response = sb.toString();
-            cacheResponseIfPossible(request, response);
-            return response;
-        }
+        return new SimpleHttpResponse(conn);
     }
 
-    protected String getCachedResponse(RestfulRequest request) {
-        synchronized (cachedResponse) {
-            return cachedResponse.get(request);
-        }
-    }
+    protected abstract DataSet parseToDataSet(DataQuery query, HttpResponse response);
 
-    protected void cacheResponseIfPossible(RestfulRequest request, String response) {
-        if (!HTTP_METHOD_GET.equalsIgnoreCase(request.getMethod())) {
-            return;
-        }
-        synchronized (cachedResponse) {
-            while (cachedResponse.size() >= 10) {
-                Iterator<Map.Entry<RestfulRequest, String>> it = cachedResponse.entrySet().iterator();
-                it.next();
-                it.remove();
-            }
-            cachedResponse.put(request, response);
-        }
+    protected CacheHint createCacheHint(DataQuery query, HttpResponse response) {
+        return ImmutableCacheHint.newBuilder().build(); // default cache hint, maxAge=0
     }
-
-    protected abstract DataSet parseToDataSet(DataQuery query, String response);
 
     public int getConnTimeoutInMillis() {
         return connTimeoutInMillis;
@@ -199,31 +177,58 @@ public abstract class RestfulProviderBase implements DataProvider {
         this.readTimeoutInMillis = readTimeoutInMillis;
     }
 
-    public static class RestfulRequest {
+    public HttpClient getHttpClient() {
+        return httpClient;
+    }
+
+    public void setHttpClient(HttpClient httpClient) {
+        this.httpClient = httpClient;
+    }
+
+    public static class SimpleHttpRequest implements HttpRequest {
         private String url;
         private String method;
-        private List<RequestHeader> headers;
+        private Map<String, List<String>> headers;
         private String body;
 
-        public RestfulRequest(String url) {
-            this(url, DEFAULT_METHOD, Collections.emptyList(), null);
+        public SimpleHttpRequest(String url) {
+            this(url, DEFAULT_METHOD, null);
         }
 
-        public RestfulRequest(String url,
-                              String method,
-                              List<RequestHeader> headers,
-                              String body) {
+        public SimpleHttpRequest(String url, String method, String body) {
             this.url = url;
             this.method = method;
-            this.headers = headers;
             this.body = body;
+        }
+
+        public void addHeader(String name, String value) {
+            if (headers == null) {
+                this.headers = new LinkedHashMap<>();
+            }
+            name = name.toLowerCase();
+            List<String> values = headers.get(name);
+            if (values == null) {
+                values = new LinkedList<>();
+                headers.put(name, values);
+            }
+            values.add(value);
+        }
+
+        public void setHeader(String name, String value) {
+            if (headers == null) {
+                this.headers = new LinkedHashMap<>();
+            }
+            name = name.toLowerCase();
+            List<String> values = new LinkedList<>();
+            values.add(value);
+            headers.put(name, values);
         }
 
         @Override
         public boolean equals(Object o) {
             if (this == o) return true;
             if (o == null || getClass() != o.getClass()) return false;
-            RestfulRequest that = (RestfulRequest) o;
+            SimpleHttpRequest that = (SimpleHttpRequest) o;
             return Objects.equals(url, that.url) &&
                     Objects.equals(method, that.method) &&
                     Objects.equals(headers, that.headers) &&
@@ -235,6 +240,7 @@ public abstract class RestfulProviderBase implements DataProvider {
             return Objects.hash(url, method, headers, body);
         }
 
+        @Override
         public String getUrl() {
             return url;
         }
@@ -243,6 +249,7 @@ public abstract class RestfulProviderBase implements DataProvider {
             this.url = url;
         }
 
+        @Override
         public String getMethod() {
             return method;
         }
@@ -251,14 +258,12 @@ public abstract class RestfulProviderBase implements DataProvider {
             this.method = method;
         }
 
-        public List<RequestHeader> getHeaders() {
-            return headers;
+        @Override
+        public Map<String, List<String>> getHeaders() {
+            return Collections.unmodifiableMap(headers);
         }
 
-        public void setHeaders(List<RequestHeader> headers) {
-            this.headers = headers;
-        }
-
+        @Override
         public String getBody() {
             return body;
         }
@@ -268,44 +273,59 @@ public abstract class RestfulProviderBase implements DataProvider {
         }
     }
 
-    public static class RequestHeader {
-        private String name;
-        private String value;
+    public static class SimpleHttpResponse implements HttpResponse {
+        private HttpURLConnection conn;
+        private transient String bodyString;
 
-        public RequestHeader(String name, String value) {
-            this.name = name;
-            this.value = value;
+        SimpleHttpResponse(HttpURLConnection conn) {
+            this.conn = conn;
         }
 
         @Override
-        public boolean equals(Object o) {
-            if (this == o) return true;
-            if (o == null || getClass() != o.getClass()) return false;
-            RequestHeader that = (RequestHeader) o;
-            return Objects.equals(name, that.name) &&
-                    Objects.equals(value, that.value);
+        public int getResponseCode() {
+            try {
+                return conn.getResponseCode();
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
         }
 
         @Override
-        public int hashCode() {
-
-            return Objects.hash(name, value);
+        public String getResponseMessage() {
+            try {
+                return conn.getResponseMessage();
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
         }
 
-        public String getName() {
-            return name;
+        @Override
+        public String getHeader(String name) {
+            return conn.getHeaderField(name);
         }
 
-        public void setName(String name) {
-            this.name = name;
+        @Override
+        public InputStream getInputStream() throws IOException {
+            return conn.getInputStream();
         }
 
-        public String getValue() {
-            return value;
-        }
+        @Override
+        public String getBodyAsString() throws IOException {
+            if (bodyString != null) {
+                return bodyString;
+            }
 
-        public void setValue(String value) {
-            this.value = value;
+            StringBuilder sb = new StringBuilder();
+            char[] cbuf = new char[4096];
+            int n;
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream()))) {
+                while ((n = reader.read(cbuf)) != -1) {
+                    sb.append(cbuf, 0, n);
+                }
+                bodyString = sb.toString();
+            }
+
+            return bodyString;
         }
     }
 

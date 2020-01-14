@@ -1,7 +1,7 @@
 /*
  * MIT License
  *
- * Copyright (c) 2018 Ctrip.com
+ * Copyright (c) 2018-2019 Ctrip.com
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -20,21 +20,17 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
- *
  */
 
-package com.ctrip.ferriswheel.common.action;
+package com.ctrip.ferriswheel.common.query;
 
-import java.util.concurrent.Callable;
-import java.util.function.Consumer;
+import java.io.Serializable;
+import java.util.Date;
 
-/**
- * @author liuhaifeng
- */
-public interface ActionContextManager extends ActionContext {
-    void withContext(ActionContext context, Runnable runnable);
+public interface CacheHint extends Serializable {
+    Date getDate();
 
-    <V> V withContext(ActionContext context, Callable<V> callable) throws Exception;
+    long getMaxAge();
 
-    <T> void withContext(ActionContext context, T input, Consumer<T> consumer);
+    boolean isFromCache();
 }

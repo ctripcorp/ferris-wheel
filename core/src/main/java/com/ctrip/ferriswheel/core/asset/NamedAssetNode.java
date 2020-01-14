@@ -8,8 +8,8 @@ abstract class NamedAssetNode extends AssetNode implements NamedAsset {
         this.name = name;
     }
 
-    public NamedAssetNode(String name, AssetNode parentAsset) {
-        super(parentAsset);
+    NamedAssetNode(String name, long assetId) {
+        super(assetId);
         this.name = name;
     }
 

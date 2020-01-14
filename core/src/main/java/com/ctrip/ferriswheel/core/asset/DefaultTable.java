@@ -6,8 +6,6 @@ import com.ctrip.ferriswheel.common.automaton.PivotConfiguration;
 import com.ctrip.ferriswheel.common.automaton.QueryConfiguration;
 import com.ctrip.ferriswheel.common.table.*;
 import com.ctrip.ferriswheel.common.util.DataSet;
-import com.ctrip.ferriswheel.common.util.DataSetMetaData;
-import com.ctrip.ferriswheel.common.util.StylizedVariant;
 import com.ctrip.ferriswheel.common.variant.DynamicValue;
 import com.ctrip.ferriswheel.common.variant.Parameter;
 import com.ctrip.ferriswheel.common.variant.Value;
@@ -16,10 +14,13 @@ import com.ctrip.ferriswheel.core.action.*;
 import com.ctrip.ferriswheel.core.bean.HeaderInfo;
 import com.ctrip.ferriswheel.core.bean.TableAutomatonInfo;
 import com.ctrip.ferriswheel.core.formula.Formula;
+import com.ctrip.ferriswheel.core.formula.FormulaElement;
+import com.ctrip.ferriswheel.core.formula.FormulaParser;
+import com.ctrip.ferriswheel.core.formula.NameReferenceElement;
+import com.ctrip.ferriswheel.core.ref.CellReference;
+import com.ctrip.ferriswheel.core.ref.NameReference;
+import com.ctrip.ferriswheel.core.ref.RangeReference;
 import com.ctrip.ferriswheel.core.util.References;
-import com.ctrip.ferriswheel.core.util.UnmodifiableIterator;
-import com.ctrip.ferriswheel.core.view.LayoutImpl;
-import com.ctrip.ferriswheel.core.view.Rectangle;
 import com.ctrip.ferriswheel.core.view.TableLayout;
 
 import java.util.*;
@@ -29,18 +30,19 @@ public class DefaultTable extends SheetAssetNode implements Table {
     static final int MAX_ROWS = 65535;
     static final int MAX_COLUMNS = 255;
 
-    private List<Header> rowHeaders = new ArrayList<>();
-    private List<Header> columnHeaders = new ArrayList<>();
-    private final SparseAssetArray<DefaultRow> rows;
-    private boolean readOnly = false;
+    private final GridData gridData;
     private final TableLayout layout = new TableLayout();
+    private final HotAreaManager hotAreaManager;
     private Automaton automaton;
-    private Map<Range, Set<Long>> rangeToNodes = new HashMap<>();
-    private Map<Long, Set<Range>> nodeToRanges = new HashMap<>();
 
-    DefaultTable(String name, DefaultSheet sheet) {
-        super(name, sheet);
-        this.rows = new SparseAssetArray<>(this);
+    private final AutoFiller autoFiller = new AutoFiller();
+
+    DefaultTable(String name, AssetManager assetManager) {
+        super(name, assetManager);
+        this.gridData = new GridData(assetManager);
+        this.hotAreaManager = new HotAreaManager(assetManager);
+        bindChild(this.gridData);
+        bindChild(this.hotAreaManager);
     }
 
     @Override
@@ -82,7 +84,6 @@ public class DefaultTable extends SheetAssetNode implements Table {
             Variant oldValue = new DynamicValue(cell.getData());
             cell.setValue(value);
             cell.getRow().getCellCount();
-            getWorkbook().onCellUpdate(cell);
             return oldValue;
         });
     }
@@ -114,7 +115,6 @@ public class DefaultTable extends SheetAssetNode implements Table {
             Formula oldFormula = cell.getFormula();
             cell.setFormula(formula == null ? null : new Formula(formula));
             cell.setValue(Value.BLANK); // wipe old value
-            getWorkbook().onCellUpdate(cell);
             return oldFormula;
         });
     }
@@ -168,7 +168,6 @@ public class DefaultTable extends SheetAssetNode implements Table {
                 fillCells.getTopBoundary(),
                 fillCells.getRightBoundary(),
                 fillCells.getBottomBoundary());
-        AutoFiller autoFiller = new AutoFiller(getWorkbook());
         if (fillCells instanceof FillCells.FillUp) {
             FillCells.FillUp fillUp = (FillCells.FillUp) fillCells;
             publicly(fillCells, () -> {
@@ -288,10 +287,6 @@ public class DefaultTable extends SheetAssetNode implements Table {
                     }
                 }
             }
-//            if (colIndex + nCols == getColumnCount()) {
-//                fixColumnCount();
-//            }
-            getWorkbook().onCellsErased(this, top, right, bottom, left);
         });
     }
 
@@ -314,18 +309,25 @@ public class DefaultTable extends SheetAssetNode implements Table {
             for (int i = 0; i < nRows; i++) {
                 newRowHeaders.add(new HeaderInfo(/* TBD */));
             }
-            rowHeaders.addAll(rowIndex, newRowHeaders);
+            gridData.getRowHeaders().addAll(rowIndex, newRowHeaders);
             // just move rows to make room for new rows.
             for (int i = getRowCount() - 1; i >= rowIndex; i--) {
-                DefaultRow row = rows.get(i);
+                DefaultRow row = gridData.getRows().get(i);
                 int toIdx = i + nRows;
-                rows.move(i, toIdx);
+                gridData.getRows().move(i, toIdx);
                 if (row != null) {
                     row.setRowIndex(toIdx);
                 }
             }
             // no need to createWorkbook new rows, it will be done the first time they are really used.
-            getWorkbook().onRowsInserted(this, rowIndex, nRows);
+            final int left = 0;
+            final int top = rowIndex;
+            final int right = getColumnCount() - 1;
+            final int bottom = getRowCount() - 1;
+
+            hotAreaManager.onTableAreaChange(left, top, right, bottom,
+                    null, null, null, null);
+            autoFiller.autoFillRowsIfPossible(this, rowIndex, nRows);
         });
     }
 
@@ -348,8 +350,8 @@ public class DefaultTable extends SheetAssetNode implements Table {
             int i;
             for (i = rowIndex; i < getRowCount() - nRows; i++) {
                 int fromIdx = i + nRows;
-                DefaultRow row = rows.get(fromIdx);
-                DefaultRow oldRow = rows.move(fromIdx, i);
+                DefaultRow row = gridData.getRows().get(fromIdx);
+                DefaultRow oldRow = gridData.getRows().move(fromIdx, i);
                 if (row != null) {
                     row.setRowIndex(i);
                 }
@@ -358,13 +360,20 @@ public class DefaultTable extends SheetAssetNode implements Table {
                 }
             }
             for (; i < rowIndex + nRows; i++) {
-                DefaultRow oldRow = rows.remove(i);
+                DefaultRow oldRow = gridData.getRows().remove(i);
                 if (oldRow != null) {
                     removedRows.add(oldRow);
                 }
             }
-            rowHeaders.subList(rowIndex, rowIndex + nRows).clear();
-            getWorkbook().onRowsRemoved(this, rowIndex, nRows, removedRows);
+            gridData.getRowHeaders().subList(rowIndex, rowIndex + nRows).clear();
+
+            final int left = 0;
+            final int top = rowIndex;
+
+            hotAreaManager.onTableAreaChange(left, top, null, null,
+                    null, rowIndex > 0 ? rowIndex - 1 : null,
+                    null, rowIndex);
+
             return removedRows;
         });
     }
@@ -388,7 +397,7 @@ public class DefaultTable extends SheetAssetNode implements Table {
             for (int i = 0; i < nCols; i++) {
                 newColumnHeaders.add(new HeaderInfo(/* TBD */));
             }
-            columnHeaders.addAll(colIndex, newColumnHeaders);
+            gridData.getColumnHeaders().addAll(colIndex, newColumnHeaders);
             for (int r = 0; r < getRowCount(); r++) {
                 DefaultRow row = getRow(r);
                 if (row == null) {
@@ -398,7 +407,15 @@ public class DefaultTable extends SheetAssetNode implements Table {
                     row.moveCell(c, c + nCols);
                 }
             }
-            getWorkbook().onColumnsInserted(this, colIndex, nCols);
+
+            final int left = colIndex;
+            final int top = 0;
+            final int right = getColumnCount() - 1;
+            final int bottom = getRowCount() - 1;
+
+            hotAreaManager.onTableAreaChange(left, top, right, bottom,
+                    null, null, null, null);
+            autoFiller.autoFillColumnsIfPossible(this, colIndex, nCols);
         });
     }
 
@@ -438,8 +455,16 @@ public class DefaultTable extends SheetAssetNode implements Table {
                     }
                 }
             }
-            columnHeaders.subList(colIndex, colIndex + nCols).clear();
-            getWorkbook().onColumnsRemoved(this, colIndex, nCols, removedCells);
+            gridData.getColumnHeaders().subList(colIndex, colIndex + nCols).clear();
+
+
+            final int left = colIndex;
+            final int top = 0;
+
+            hotAreaManager.onTableAreaChange(left, top, null, null,
+                    colIndex > 0 ? colIndex - 1 : null, null,
+                    colIndex, null);
+
             return removedCells;
         });
     }
@@ -452,22 +477,15 @@ public class DefaultTable extends SheetAssetNode implements Table {
     void handleAction(AutomateTable automateTable) {
         publicly(automateTable, () -> {
             createAndRegisterAutomaton(automateTable.getSolution());
-            for (Map.Entry<Integer, DefaultRow> rowEntry : rows) {
-                DefaultRow row = rowEntry.getValue();
-                row.setEphemeral(true);
-                for (Map.Entry<Integer, Cell> cellEntry : row) {
-                    ((DefaultCell) cellEntry.getValue()).setEphemeral(true);
-                    ((DefaultCell) cellEntry.getValue()).getDependents().forEach(d -> d.addDependency(this));
-                }
-            }
-            getWorkbook().onTableAutomated(this);
+            Automaton auto = getAutomaton();
+            auto.init();
         });
     }
 
     private Automaton createAndRegisterAutomaton(AutomateConfiguration solution) {
         if (this.automaton != null) {
             unbindChild((AssetNode) this.automaton);
-            this.removeDependency(((AssetNode) this.automaton));
+            gridData.removeDependency((AssetNode) this.automaton);
         }
 
         if (solution instanceof QueryConfiguration) {
@@ -475,11 +493,11 @@ public class DefaultTable extends SheetAssetNode implements Table {
                     (QueryConfiguration) solution);
             bindChild(queryAutomaton);
             this.automaton = queryAutomaton;
+            gridData.addDependency(queryAutomaton);
             for (String name : queryAutomaton.getTemplate().getBuiltinParamNames()) {
                 Parameter param = queryAutomaton.getTemplate().getBuiltinParam(name);
                 queryAutomaton.addDependency((ValueNode) param.getValue());
             }
-            this.addDependency(queryAutomaton);
             return queryAutomaton;
 
         } else if (solution instanceof PivotConfiguration) {
@@ -487,8 +505,7 @@ public class DefaultTable extends SheetAssetNode implements Table {
                     (PivotConfiguration) solution);
             bindChild(pivotAutomaton);
             this.automaton = pivotAutomaton;
-            pivotAutomaton.addDependency(pivotAutomaton.getData());
-            this.addDependency(pivotAutomaton);
+            gridData.addDependency(pivotAutomaton);
             return pivotAutomaton;
 
         } else {
@@ -516,12 +533,12 @@ public class DefaultTable extends SheetAssetNode implements Table {
         }
         DefaultRow oldRow = removeRow(index);
         row.setRowIndex(index);
-        rows.set(index, row);
+        gridData.getRows().set(index, row);
         return oldRow;
     }
 
     private DefaultRow removeRow(int rowIndex) {
-        DefaultRow row = rows.remove(rowIndex);
+        DefaultRow row = gridData.getRows().remove(rowIndex);
         return row;
     }
 
@@ -530,9 +547,6 @@ public class DefaultTable extends SheetAssetNode implements Table {
         if (row == null) {
             row = new DefaultRow(getAssetManager());
             setRow(rowIndex, row);
-            if (getAutomaton() != null) {
-                row.setEphemeral(true);
-            }
         }
         return row;
     }
@@ -543,12 +557,8 @@ public class DefaultTable extends SheetAssetNode implements Table {
         DefaultRow row = getOrCreateRow(rowIndex);
         DefaultCell cell = row.getCell(columnIndex);
         if (cell == null) {
-            cell = new DefaultCell((DefaultAssetManager) getAssetManager());
+            cell = new DefaultCell(getAssetManager());
             row.setCell(columnIndex, cell);
-            // cell.addDependency(this); // TODO review if it is needed
-            if (getAutomaton() != null) {
-                cell.setEphemeral(true);
-            }
         }
         return cell;
     }
@@ -568,9 +578,13 @@ public class DefaultTable extends SheetAssetNode implements Table {
     }
 
     private void checkRowIndex(int rowIndex) {
-        if (rowIndex < 0 || rowIndex >= getRowCount()) {
+        if (!isValidRowIndex(rowIndex)) {
             throw new IndexOutOfBoundsException();
         }
+    }
+
+    boolean isValidRowIndex(int rowIndex) {
+        return (rowIndex >= 0 && rowIndex < getRowCount());
     }
 
     private void checkRowIndexForInsert(int rowIndex) {
@@ -580,9 +594,13 @@ public class DefaultTable extends SheetAssetNode implements Table {
     }
 
     private void checkColumnIndex(int columnIndex) {
-        if (columnIndex < 0 || columnIndex >= getColumnCount()) {
+        if (!isValidColumnIndex(columnIndex)) {
             throw new IndexOutOfBoundsException();
         }
+    }
+
+    boolean isValidColumnIndex(int columnIndex) {
+        return (columnIndex >= 0 && columnIndex < getColumnCount());
     }
 
     private void checkColumnIndexForInsert(int columnIndex) {
@@ -592,42 +610,42 @@ public class DefaultTable extends SheetAssetNode implements Table {
     }
 
     private void checkReadOnly(boolean expected) {
-        if (readOnly != expected) {
+        if (gridData.isReadOnly() != expected) {
             throw new IllegalStateException("Read only flag not matches.");
         }
     }
 
     @Override
     public int getRowCount() {
-        return rowHeaders == null ? 0 : rowHeaders.size();
+        return gridData.getRowCount();
     }
 
     @Override
     public Header getRowHeader(int rowIndex) {
-        return rowHeaders.get(rowIndex);
+        return gridData.getRowHeader(rowIndex);
     }
 
     @Override
     public DefaultRow getRow(int index) {
-        return rows.get(index);
+        return gridData.getRow(index);
     }
 
     @Override
     public int getColumnCount() {
-        return columnHeaders == null ? 0 : columnHeaders.size();
+        return gridData.getColumnCount();
     }
 
     @Override
     public Header getColumnHeader(int columnIndex) {
-        return columnHeaders.get(columnIndex);
+        return gridData.getColumnHeader(columnIndex);
     }
 
     public boolean isReadOnly() {
-        return readOnly;
+        return gridData.isReadOnly();
     }
 
     protected void setReadOnly(boolean readOnly) {
-        this.readOnly = readOnly;
+        gridData.setReadOnly(readOnly);
     }
 
     //    @Override
@@ -645,16 +663,16 @@ public class DefaultTable extends SheetAssetNode implements Table {
     }
 
     DefaultWorkbook getWorkbook() {
-        return getSheet().getWorkbook();
+        return getSheet() == null ? null : getSheet().getWorkbook();
     }
 
     @Override
     public Iterator<Map.Entry<Integer, Row>> iterator() {
-        return new UnmodifiableIterator(rows.iterator());
+        return gridData.iterator();
     }
 
     @Override
-    public LayoutImpl getLayout() {
+    public TableLayout getLayout() {
         return layout;
     }
 
@@ -717,48 +735,23 @@ public class DefaultTable extends SheetAssetNode implements Table {
         }
     }
 
+    void hookCell(CellReference cellReference, long nodeId) {
+        hotAreaManager.hookCell(cellReference, nodeId);
+
+    }
+
     /**
      * Watch range.
      *
-     * @param range  Table range.
-     * @param nodeId ID of the node which depends on the specified range.
+     * @param rangeReference Table range reference.
+     * @param nodeId         ID of the node which depends on the specified range.
      */
-    void subscribeRange(Range range, long nodeId) {
-        Set<Long> nodeIds = rangeToNodes.get(range);
-        if (nodeIds == null) {
-            nodeIds = new HashSet<>();
-            rangeToNodes.put(range, nodeIds);
-        }
-        nodeIds.add(nodeId);
-        Set<Range> ranges = nodeToRanges.get(nodeId);
-        if (ranges == null) {
-            ranges = new HashSet<>();
-            nodeToRanges.put(nodeId, ranges);
-        }
-        ranges.add(range);
+    void hookArea(RangeReference rangeReference, long nodeId) {
+        hotAreaManager.hookRange(rangeReference, nodeId);
     }
 
     /**
-     * Clear range watchers related to the specified node ID.
-     *
-     * @param nodeId
-     */
-    void clearRangeWatcher(long nodeId) {
-        Set<Range> ranges = nodeToRanges.remove(nodeId);
-        if (ranges == null) {
-            return;
-        }
-        for (Range r : ranges) {
-            Set<Long> nodeIds = rangeToNodes.get(r);
-            nodeIds.remove(nodeId);
-            if (nodeIds.isEmpty()) {
-                rangeToNodes.remove(r);
-            }
-        }
-    }
-
-    /**
-     * Find overlapped ranges.
+     * Find overlapped areas.
      *
      * @param left
      * @param top
@@ -766,124 +759,15 @@ public class DefaultTable extends SheetAssetNode implements Table {
      * @param bottom
      * @return
      */
-    List<Range> findOverlappedRanges(Integer left,
-                                     Integer top,
-                                     Integer right,
-                                     Integer bottom) {
-        // 先用笨方法实现功能
-        List<Range> ranges = new LinkedList<>();
-        for (Range range : rangeToNodes.keySet()) {
-            if (range.tableId != getAssetId()) {
-                continue;
-            }
-            if (range.isOverlap(left, top, right, bottom)) {
-                ranges.add(range);
-            }
-        }
-        return ranges;
-    }
-
-    /**
-     * Get node IDs which depend on the specified range.
-     *
-     * @param range
-     * @return
-     */
-    Set<Long> getWatchers(Range range) {
-        Set<Long> set = rangeToNodes.get(range);
-        return set == null ? Collections.emptySet() : set;
-    }
-
-    Range tableRange(int rowIndex, int colIndex) {
-        return tableRange(colIndex, rowIndex, colIndex, rowIndex);
-    }
-
-    Range tableRange(int left, int top, int right, int bottom) {
-        if (left == -1) {
-            left = 0;
-        }
-        if (top == -1) {
-            top = 0;
-        }
-        if (right == -1) {
-            right = Integer.MAX_VALUE;
-        }
-        if (bottom == -1) {
-            bottom = Integer.MAX_VALUE;
-        }
-        return new Range(getAssetId(), left, top, right, bottom);
-    }
-
-    void fillByAutomaton() {
-        setReadOnly(false);
-        try {
-            DataSet dataSet = getAutomaton().getDataSet();
-            getSheet().getNotifier().privately(() -> getWorkbook().withoutRefresh(() -> {
-                if (dataSet != null) {
-                    doFillTable(dataSet);
-                } else {
-                    doClearTable();
-                }
-                getWorkbook().onTableUpdate(this);
-            }));
-        } finally {
-            setReadOnly(true);
-            publicly(new ResetTable(getSheet().getName(), this), () -> {
-            });
-        }
+    private List<HotAreaDelegate> findOverlappedAreas(Integer left,
+                                                      Integer top,
+                                                      Integer right,
+                                                      Integer bottom) {
+        return hotAreaManager.findOverlappedAreas(left, top, right, bottom);
     }
 
     void doFillTable(DataSet dataSet) {
-        DataSetMetaData setMeta = dataSet.getMetaData();
-        int rowCount = 0;
-
-        columnHeaders = new ArrayList<>(setMeta.getColumnCount());
-        rowHeaders = new ArrayList<>();
-
-        if (setMeta.hasColumnMeta()) {
-            rowHeaders.add(new HeaderInfo(/* TBD */));
-            for (int col = 0; col < setMeta.getColumnCount(); col++) {
-                columnHeaders.add(new HeaderInfo(/* TBD */));
-                refreshCellValue(rowCount, col, Value.str(setMeta.getColumnMeta(col).getName()));
-            }
-            rowCount++;
-        } else {
-            for (int col = 0; col < setMeta.getColumnCount(); col++) {
-                columnHeaders.add(new HeaderInfo(/* TBD */));
-            }
-        }
-        dataSet.rewind();
-        while (dataSet.next()) {
-            rowHeaders.add(new HeaderInfo(/* TBD */));
-            for (int col = 0; col < setMeta.getColumnCount(); col++) {
-                StylizedVariant stylizedVariant = dataSet.getColumn(col);
-                Variant value = stylizedVariant.getValue();
-                if (value == null) {
-                    value = Value.BLANK;
-                }
-                String format = stylizedVariant.getFormat();
-//                refreshCellValue(row, col, Value.from(value));
-                DefaultCell cell = getOrCreateCell(rowCount, col);
-                cell.setValue(value);
-                if (format != null) {
-                    cell.setFormat(format);
-                }
-            }
-            rowCount++;
-        }
-
-        // trim rows/columns if needed
-        for (int i = getRowCount(); i < rows.size(); i++) {
-            rows.remove(i);
-        }
-        Iterator<Map.Entry<Integer, DefaultRow>> rowIter = rows.iterator();
-        while (rowIter.hasNext()) {
-            DefaultRow row = rowIter.next().getValue();
-            int count = row.getCellCount();
-            for (int i = getColumnCount(); i < count; i++) {
-                row.removeCell(i);
-            }
-        }
+        gridData.fill(dataSet);
     }
 
     void refreshCellValue(int rowIndex, int columnIndex, Value newValue) {
@@ -893,55 +777,78 @@ public class DefaultTable extends SheetAssetNode implements Table {
         }
     }
 
-    void doClearTable() {
-        if (getRowCount() > 0) {
-            removeRows(0, getRowCount());
-        }
-        if (this.rowHeaders != null) {
-            this.rowHeaders.clear();
-        }
-        if (this.columnHeaders != null) {
-            this.columnHeaders.clear();
+    @Override
+    protected EvaluationState doEvaluate(EvaluationContext context) {
+        return EvaluationState.DONE;
+    }
+
+    void onTableUpdate() {
+        hotAreaManager.onTableAreaChange(0,
+                0,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null);
+        if (getAutomaton() instanceof DefaultQueryAutomaton) {
+            updateNamedReferences((DefaultQueryAutomaton) getAutomaton());
         }
     }
 
-
-    class Range extends Rectangle {
-        long tableId;
-
-        Range() {
+    private void updateNamedReferences(DefaultQueryAutomaton queryAutomaton) {
+        Collection<Parameter> params = queryAutomaton.getTemplate().getAllBuiltinParams().values();
+        for (Parameter param : params) {
+            ValueNode valueNode = (ValueNode) param;
+            // copy dependent set as during the fix procedure the set can be rebuilt and
+            // cause concurrent modification issue.
+            Set<AssetNode> dependents = new HashSet(valueNode.getDependents());
+            for (AssetNode node : dependents) {
+                fixNameReferenceForForm(node, (ManagedParameter) param);
+            }
         }
+    }
 
-        Range(long tableId, int left, int top, int right, int bottom) {
-            super(left, top, right, bottom);
-            this.tableId = tableId;
+    private void fixNameReferenceForForm(AssetNode node, ManagedParameter param) {
+        if (getWorkbook().isSkipWelding() || !(node instanceof ValueNode)) {
+            return; // should manually update later.
         }
+        String sheetName = param.parent(DefaultSheet.class).getName();
+        String assetName = param.parent(DefaultTable.class).getName();
+        ValueNode vn = (ValueNode) node;
+        Formula formula = vn.getFormula();
+        if (formula == null) {
+            return; // raise warning?
+        }
+        for (FormulaElement e : formula) {
+            if (e instanceof NameReferenceElement) {
+                NameReference nameRef = ((NameReferenceElement) e).getNameReference();
+                if (nameRef.getTargetId() == param.getAssetId()) {
+                    nameRef.setSheetName(sheetName);
+                    nameRef.setAssetName(assetName);
+                    nameRef.setTargetName(param.getName());
+                }
+            }
+        }
+        String newFormula = FormulaParser.assemble(formula, 0, 0);
+        if (!newFormula.equals(vn.getFormulaString())) {
+            DefaultForm form = vn.parent(DefaultForm.class);
+            publicly(new UpdateForm(
+                            form.getSheet().getName(),
+                            form.getName(),
+                            form),
+                    () -> {
+                        vn.setFormula(new Formula(newFormula));
+                    });
+        }
+    }
 
-        @Override
-        public boolean equals(Object o) {
-            if (this == o) return true;
-            if (o == null || getClass() != o.getClass()) return false;
-            if (!super.equals(o)) return false;
-            Range range = (Range) o;
-            return Objects.equals(tableId, range.tableId);
-        }
+    GridData getGridData() {
+        return gridData;
+    }
 
-        @Override
-        public int hashCode() {
-            return Objects.hash(super.hashCode(), tableId);
-        }
-
-        public boolean isOverlap(Integer left, Integer top, Integer right, Integer bottom) {
-            return isRowOverlap(top, bottom) && isColumnOverlap(left, right);
-        }
-
-        private boolean isRowOverlap(Integer top, Integer bottom) {
-            return (top == null || top <= this.getBottom()) && (bottom == null || bottom >= this.getTop());
-        }
-
-        private boolean isColumnOverlap(Integer left, Integer right) {
-            return (left == null || left <= this.getRight()) && (right == null || right >= this.getLeft());
-        }
+    HotAreaManager getHotAreaManager() {
+        return hotAreaManager;
     }
 
 }

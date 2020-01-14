@@ -25,32 +25,51 @@
 
 package com.ctrip.ferriswheel.common.util;
 
-public class DataSetMetaDataImpl implements DataSetMetaData {
-    private final int columnCount;
-    private final ColumnMetaData[] columnMetaDataArray;
+import com.ctrip.ferriswheel.common.variant.VariantType;
 
-    public DataSetMetaDataImpl(ColumnMetaData[] columnMetas) {
-        this.columnCount = columnMetas.length;
-        this.columnMetaDataArray = columnMetas;
+import java.util.Objects;
+
+public final class ImmutableColumnMetaData implements ColumnMetaData {
+    private final String name;
+    private final VariantType type;
+
+    public static ImmutableColumnMetaData from(ColumnMetaData columnMetaData) {
+        if (columnMetaData == null) {
+            return null;
+        } else if (columnMetaData instanceof ImmutableColumnMetaData) {
+            return (ImmutableColumnMetaData) columnMetaData;
+        } else {
+            return new ImmutableColumnMetaData(columnMetaData.getName(), columnMetaData.getType());
+        }
     }
 
-    public DataSetMetaDataImpl(int columnCount) {
-        this.columnCount = columnCount;
-        this.columnMetaDataArray = null;
+    public ImmutableColumnMetaData(String name, VariantType type) {
+        this.name = name;
+        this.type = type;
     }
 
     @Override
-    public boolean hasColumnMeta() {
-        return columnMetaDataArray != null;
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        ImmutableColumnMetaData that = (ImmutableColumnMetaData) o;
+        return name.equals(that.name) &&
+                type == that.type;
     }
 
     @Override
-    public int getColumnCount() {
-        return columnCount;
+    public int hashCode() {
+        return Objects.hash(name, type);
     }
 
     @Override
-    public ColumnMetaData getColumnMeta(int index) {
-        return columnMetaDataArray[index];
+    public String getName() {
+        return name;
     }
+
+    @Override
+    public VariantType getType() {
+        return type;
+    }
+
 }

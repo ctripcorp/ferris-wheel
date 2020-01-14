@@ -21,7 +21,6 @@ import com.ctrip.ferriswheel.common.view.Layout;
 import com.ctrip.ferriswheel.core.action.*;
 import com.ctrip.ferriswheel.core.bean.*;
 import com.ctrip.ferriswheel.core.formula.Formula;
-import com.ctrip.ferriswheel.core.util.UUIDGen;
 import com.ctrip.ferriswheel.core.util.UnmodifiableIterator;
 import com.ctrip.ferriswheel.core.view.LayoutImpl;
 import com.ctrip.ferriswheel.core.view.SheetLayout;
@@ -30,6 +29,11 @@ import java.util.Iterator;
 import java.util.concurrent.Callable;
 
 public class DefaultSheet extends NamedAssetNode implements Sheet {
+    private static final String ASSET_TYPE_NAME_TABLE = "table";
+    private static final String ASSET_TYPE_NAME_CHART = "chart";
+    private static final String ASSET_TYPE_NAME_TEXT = "text";
+    private static final String ASSET_TYPE_NAME_FORM = "form";
+
     private final NamedAssetList<SheetAssetNode> assets;
     private final SheetLayout layout = new SheetLayout();
     private ActionNotifier notifier;
@@ -125,10 +129,6 @@ public class DefaultSheet extends NamedAssetNode implements Sheet {
         }
         return publicly(removeAsset, () -> {
             assets.remove(asset.getName());
-            if (asset instanceof DefaultTable) {
-                DefaultTable table = (DefaultTable) asset;
-                getWorkbook().onTableRemoved(table);
-            }
             return (T) asset;
         });
     }
@@ -149,20 +149,18 @@ public class DefaultSheet extends NamedAssetNode implements Sheet {
         if (getAsset(renameAsset.getNewAssetName()) != null) {
             throw new IllegalArgumentException("Duplicated asset name: " + renameAsset.getNewAssetName());
         }
-        getWorkbook().withoutRefresh(() ->
-                publicly(renameAsset, () -> {
-                    if (!assets.rename(renameAsset.getOldAssetName(), renameAsset.getNewAssetName())) {
-                        throw new RuntimeException("Failed to rename asset.");
-                    }
-                    // if renamed asset is  a table, there could be formulas which need update.
-                    if (asset instanceof DefaultTable) {
-                        DefaultTable table = (DefaultTable) asset;
-                        getWorkbook().onTableUpdate(table);
-                    }
-                }));
+        publicly(renameAsset, () -> {
+            if (!assets.rename(renameAsset.getOldAssetName(), renameAsset.getNewAssetName())) {
+                throw new RuntimeException("Failed to rename asset.");
+            }
+            // if renamed asset is  a table, there could be formulas which need update.
+            if (asset instanceof DefaultTable) {
+                DefaultTable table = (DefaultTable) asset;
+                table.onTableUpdate();
+            }
+        });
         // technically rename a table doesn't affect any cell value or chart property value,
         // it just affect formulas.
-        getWorkbook().refreshIfNeeded();
     }
 
     protected DefaultTable addTable(Table tableData) {
@@ -172,7 +170,7 @@ public class DefaultSheet extends NamedAssetNode implements Sheet {
     DefaultTable handleAction(AddTable addTable) {
         String tableName = addTable.getTableData().getName();
         if (tableName == null || tableName.isEmpty()) {
-            tableName = UUIDGen.generate().toString();
+            tableName = generateAssetName(ASSET_TYPE_NAME_TABLE);
         }
         if (getAsset(tableName) != null) {
             throw new IllegalArgumentException("Duplicated name: " + tableName);
@@ -216,8 +214,19 @@ public class DefaultSheet extends NamedAssetNode implements Sheet {
         });
     }
 
+    private String generateAssetName(String typeName) {
+        for (int i = 1; i < Integer.MAX_VALUE; i++) {
+            String pendingName = typeName + i;
+            if (assets.get(pendingName) == null) {
+                return pendingName;
+            }
+        }
+        // well, this should not happen.
+        throw new RuntimeException("Failed to generate asset name.");
+    }
+
     DefaultTable createTable(String name) {
-        return new DefaultTable(name, this);
+        return new DefaultTable(name, getAssetManager());
     }
 
     protected DefaultChart addChart(Chart chart) {
@@ -227,7 +236,7 @@ public class DefaultSheet extends NamedAssetNode implements Sheet {
     DefaultChart handleAction(AddChart addChart) {
         String chartName = addChart.getChartData().getName();
         if (chartName == null || chartName.isEmpty()) {
-            chartName = UUIDGen.generate().toString();
+            chartName = generateAssetName(ASSET_TYPE_NAME_CHART);
         }
         if (getAsset(chartName) != null) {
             throw new IllegalArgumentException("Duplicated name: " + chartName);
@@ -235,12 +244,11 @@ public class DefaultSheet extends NamedAssetNode implements Sheet {
         final String finalChartName = chartName;
         return publicly(addChart, () -> {
             Chart chartData = addChart.getChartData();
-            DefaultChart chart = new DefaultChart(finalChartName, chartData.getType(), this);
+            DefaultChart chart = new DefaultChart(finalChartName, chartData.getType(), getAssetManager());
             assets.add(chart);
             // now fill data
             layoutNewAsset(chart);
             updateChart(chart, chartData);
-            getWorkbook().onChartCreated(chart);
             addChart.setChartData(chart);
             return chart;
         });
@@ -260,7 +268,6 @@ public class DefaultSheet extends NamedAssetNode implements Sheet {
         }
         return publicly(updateChart, () -> {
             updateChart(chart, chartData);
-            getWorkbook().onChartUpdated(chart);
             return chart;
         });
     }
@@ -322,7 +329,7 @@ public class DefaultSheet extends NamedAssetNode implements Sheet {
     DefaultText handleAction(AddText addText) {
         String textName = addText.getTextData().getName();
         if (textName == null || textName.isEmpty()) {
-            textName = UUIDGen.generate().toString();
+            textName = generateAssetName(ASSET_TYPE_NAME_TEXT);
         }
         if (getAsset(textName) != null) {
             throw new IllegalArgumentException("Duplicated name: " + textName);
@@ -336,14 +343,13 @@ public class DefaultSheet extends NamedAssetNode implements Sheet {
             if (addText.getTextData().getLayout() == null) {
                 layoutNewAsset(text);
             }
-            getWorkbook().onAssetUpdate(text);
             addText.setTextData(text);
             return text;
         });
     }
 
     DefaultText createText(String name) {
-        return new DefaultText(name, this);
+        return new DefaultText(name, getAssetManager());
     }
 
     @Override
@@ -363,7 +369,6 @@ public class DefaultSheet extends NamedAssetNode implements Sheet {
             if (updateText.getTextData().getLayout() == null) {
                 ((TextData) updateText.getTextData()).setLayout(new LayoutImpl(text.getLayout()));
             }
-            getWorkbook().onAssetUpdate(text);
             return text;
         });
     }
@@ -388,7 +393,7 @@ public class DefaultSheet extends NamedAssetNode implements Sheet {
     DefaultForm handleAction(AddForm addForm) {
         String formName = addForm.getFormData().getName();
         if (formName == null || formName.isEmpty()) {
-            formName = UUIDGen.generate().toString();
+            formName = generateAssetName(ASSET_TYPE_NAME_FORM);
         }
         if (getAsset(formName) != null) {
             throw new IllegalArgumentException("Duplicated name: " + formName);
@@ -403,14 +408,13 @@ public class DefaultSheet extends NamedAssetNode implements Sheet {
                 layoutNewAsset(form);
             }
 
-            getWorkbook().onAssetUpdate(form);
             addForm.setFormData(form);
             return form;
         });
     }
 
     DefaultForm createForm(String name) {
-        return new DefaultForm(name, this);
+        return new DefaultForm(name, getAssetManager());
     }
 
     public DefaultForm updateForm(Form form) {
@@ -424,7 +428,6 @@ public class DefaultSheet extends NamedAssetNode implements Sheet {
         return publicly(updateForm, () -> {
             DefaultForm form = getAsset(updateForm.getFormName());
             fillFormData(form, updateForm.getFormData());
-            getWorkbook().onAssetUpdate(form);
             updateForm.setFormData(form);
             return form;
         });
@@ -433,7 +436,7 @@ public class DefaultSheet extends NamedAssetNode implements Sheet {
     void fillFormData(DefaultForm form, Form data) {
         form.clearFields();
         for (FormField field : data) {
-            DefaultFormField defaultField = new DefaultFormField(field.getName(), form);
+            DefaultFormField defaultField = new DefaultFormField(field.getName(), form.getAssetManager());
             defaultField.fillFieldData(field);
             form.addField(defaultField);
         }
@@ -540,12 +543,18 @@ public class DefaultSheet extends NamedAssetNode implements Sheet {
     }
 
     @Override
-    public LayoutImpl getLayout() {
+    public SheetLayout getLayout() {
         return layout;
     }
 
     @Override
     public Iterator<SheetAsset> iterator() {
         return new UnmodifiableIterator<>(assets.iterator());
+    }
+
+    @Override
+    protected EvaluationState doEvaluate(EvaluationContext context) {
+        // nothing to do at present
+        return EvaluationState.DONE;
     }
 }

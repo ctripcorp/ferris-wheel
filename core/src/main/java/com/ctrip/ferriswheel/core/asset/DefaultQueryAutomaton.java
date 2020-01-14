@@ -5,6 +5,7 @@ import com.ctrip.ferriswheel.common.automaton.QueryAutomaton;
 import com.ctrip.ferriswheel.common.automaton.QueryConfiguration;
 import com.ctrip.ferriswheel.common.query.DataProvider;
 import com.ctrip.ferriswheel.common.query.DataQuery;
+import com.ctrip.ferriswheel.common.query.QueryResult;
 import com.ctrip.ferriswheel.common.util.DataSet;
 import com.ctrip.ferriswheel.common.variant.Variant;
 import com.ctrip.ferriswheel.core.action.ExecuteQuery;
@@ -26,7 +27,8 @@ public class DefaultQueryAutomaton extends AbstractAutomaton implements QueryAut
     private final DefaultQueryTemplate template;
     private transient Map<String, Variant> parameters;
     private transient DataQuery query;
-    private transient AtomicReference<DataSet> dataSetReference = new AtomicReference<>();
+    private transient AtomicReference<QueryResult> dataSetReference = new AtomicReference<>();
+    private volatile boolean isVolatile = false;
 
     DefaultQueryAutomaton(AssetManager assetManager, QueryConfiguration solution) {
         super(assetManager);
@@ -54,8 +56,7 @@ public class DefaultQueryAutomaton extends AbstractAutomaton implements QueryAut
                 this.parameters = executeQuery.getParams();
             }
             this.query = null; // clear old query
-
-            getTable().getWorkbook().refreshIfNeeded();
+            markDirty();
         });
     }
 
@@ -65,23 +66,18 @@ public class DefaultQueryAutomaton extends AbstractAutomaton implements QueryAut
     @Override
     public void execute(boolean forceUpdate) {
         if (!forceUpdate && query != null &&
-                getLastUpdateSequenceNumber() > template.getLastUpdateSequenceNumber()) {
+                getCurrentRevision() > template.getCurrentRevision()) {
             return;
         }
-        DataSet dataSet = doQuery();
-        this.dataSetReference.set(dataSet);
+        QueryResult result = doQuery(forceUpdate);
+        this.dataSetReference.set(result);
     }
 
     @Override
     public <V> Future<V> execute(boolean forceUpdate, CompletionService<V> completionService, V result) {
-        if (!forceUpdate && query != null &&
-                getLastUpdateSequenceNumber() > template.getLastUpdateSequenceNumber()) {
-            return null;
-        }
-
         DefaultWorkbook wb = parent(DefaultWorkbook.class);
 
-        if (wb.isForceRefresh()) {
+        if (forceUpdate) {
             parameters = Collections.emptyMap();
         }
         this.query = template.renderQuery(parameters);
@@ -90,6 +86,7 @@ public class DefaultQueryAutomaton extends AbstractAutomaton implements QueryAut
 
         try {
             if (provider == null) {
+                setVolatile(false);
                 throw new RuntimeException("Unable to find data provider for query scheme: "
                         + query.getScheme());
             }
@@ -98,8 +95,12 @@ public class DefaultQueryAutomaton extends AbstractAutomaton implements QueryAut
 
             return completionService.submit(() -> {
                 try {
-                    dataSetReference.set(provider.execute(query));
-                    setLastUpdateSequenceNumber(parent(DefaultWorkbook.class).nextSequenceNumber());
+                    QueryResult qr = provider.execute(query, forceUpdate);
+                    dataSetReference.set(qr);
+
+                    // update volatile flag
+                    setVolatile(qr.getCacheHint().getMaxAge() <= 0);
+
                 } catch (Throwable e) {
                     LOG.warn("Failed to execute query.", e);
                     // TODO mark error
@@ -114,10 +115,10 @@ public class DefaultQueryAutomaton extends AbstractAutomaton implements QueryAut
         }
     }
 
-    private DataSet doQuery() {
+    private QueryResult doQuery(boolean forceUpdate) {
         DefaultWorkbook wb = parent(DefaultWorkbook.class);
 
-        if (wb.isForceRefresh()) {
+        if (forceUpdate) {
             parameters = Collections.emptyMap();
         }
         this.query = template.renderQuery(parameters);
@@ -131,7 +132,7 @@ public class DefaultQueryAutomaton extends AbstractAutomaton implements QueryAut
             }
 
             // execute query
-            return provider.execute(query);
+            return provider.execute(query, forceUpdate);
 
         } catch (IOException e) {
             LOG.warn("Failed to execute query.", e);
@@ -142,6 +143,15 @@ public class DefaultQueryAutomaton extends AbstractAutomaton implements QueryAut
             // TODO mark error
             return null;
         }
+    }
+
+    @Override
+    public boolean isVolatile() {
+        return isVolatile;
+    }
+
+    private void setVolatile(boolean aVolatile) {
+        isVolatile = aVolatile;
     }
 
     @Override
@@ -156,6 +166,7 @@ public class DefaultQueryAutomaton extends AbstractAutomaton implements QueryAut
                 query == null ? null : new TableAutomatonInfo.QueryInfo(query));
     }
 
+    @Override
     public DefaultQueryTemplate getTemplate() {
         return template;
     }
@@ -165,9 +176,10 @@ public class DefaultQueryAutomaton extends AbstractAutomaton implements QueryAut
         return Collections.unmodifiableMap(parameters);
     }
 
+    @Override
     public DataSet getDataSet() {
         if (dataSetReference.get() != null) {
-            return dataSetReference.get();
+            return dataSetReference.get().getDataSet();
         } else {
             return null;
         }

@@ -26,15 +26,10 @@
 package com.ctrip.ferriswheel.core.asset;
 
 import com.ctrip.ferriswheel.common.Environment;
-import com.ctrip.ferriswheel.common.query.DataProvider;
-import com.ctrip.ferriswheel.common.query.DataQuery;
+import com.ctrip.ferriswheel.common.query.*;
 import com.ctrip.ferriswheel.common.table.Table;
-import com.ctrip.ferriswheel.common.util.DataSet;
-import com.ctrip.ferriswheel.common.util.ListDataSet;
-import com.ctrip.ferriswheel.common.variant.DefaultParameter;
-import com.ctrip.ferriswheel.common.variant.DynamicValue;
-import com.ctrip.ferriswheel.common.variant.Value;
-import com.ctrip.ferriswheel.common.variant.Variant;
+import com.ctrip.ferriswheel.common.util.DataSetBuilder;
+import com.ctrip.ferriswheel.common.variant.*;
 import com.ctrip.ferriswheel.core.bean.DefaultEnvironment;
 import com.ctrip.ferriswheel.core.bean.TableAutomatonInfo.QueryAutomatonInfo;
 import com.ctrip.ferriswheel.core.bean.TableAutomatonInfo.QueryTemplateInfo;
@@ -42,7 +37,6 @@ import com.ctrip.ferriswheel.core.loader.DefaultProviderManager;
 import junit.framework.TestCase;
 
 import java.util.Collections;
-import java.util.concurrent.CountDownLatch;
 import java.util.function.Function;
 
 /**
@@ -93,12 +87,15 @@ public class TestWorkbookWithAsyncAutomaton extends TestCase {
         t5.addRows(1);
         t5.addColumns(1);
         t5.setCellFormula(0, 0, "t3!A1+1");
+
+        workbook.refresh();
         System.out.println("## Initial workbook:");
         System.out.println(workbook);
     }
 
     public void testNormalCase() {
         t1.setCellValue(0, 0, Value.dec(1));
+        workbook.refresh();
         assertEquals(2, t2.getCell(0, 0).intValue());
         assertEquals(2, t3.getCell(0, 0).intValue());
         assertEquals(4, t4.getCell(0, 0).intValue());
@@ -113,6 +110,7 @@ public class TestWorkbookWithAsyncAutomaton extends TestCase {
             return null;
         };
         t1.setCellValue(0, 0, Value.dec(2));
+        workbook.refresh();
         assertEquals(2, t1.getCell(0, 0).intValue());
 //        assertEquals(3, t3.getCell(0, 0).intValue());
 
@@ -122,14 +120,14 @@ public class TestWorkbookWithAsyncAutomaton extends TestCase {
             }
             return null;
         };
-        workbook.refresh();
+        workbook.refresh(true);
         assertEquals(2, t1.getCell(0, 0).intValue());
         assertEquals(3, t2.getCell(0, 0).intValue());
         assertEquals(3, t3.getCell(0, 0).intValue());
         assertEquals(4, t5.getCell(0, 0).intValue());
 
         provider.beforeExecute = null;
-        workbook.refresh();
+        workbook.refresh(true);
         assertEquals(2, t1.getCell(0, 0).intValue());
         assertEquals(3, t2.getCell(0, 0).intValue());
         assertEquals(3, t3.getCell(0, 0).intValue());
@@ -146,27 +144,19 @@ public class TestWorkbookWithAsyncAutomaton extends TestCase {
         }
 
         @Override
-        public DataSet execute(DataQuery query) {
+        public QueryResult execute(DataQuery query, boolean forceRefresh) {
             if (beforeExecute != null) {
                 beforeExecute.apply(query);
             }
             Variant val = query.getParam("val");
             System.out.println("execute: " + query.getScheme() + " => " + val);
-            ListDataSet.Builder dataSetBuilder = ListDataSet.newBuilder()
-                    .setColumnCount(1);
-            dataSetBuilder.newRecordBuilder()
+            DataSetBuilder dataSetBuilder = DataSetBuilder.withColumnCount(1)
+                    .newRecord()
                     .set(0, query.getParam("val"))
                     .commit();
-            return dataSetBuilder.build();
+            return new ImmutableQueryResult(ErrorCodes.OK, "Ok",
+                    ImmutableCacheHint.newBuilder().maxAge(0).build(), dataSetBuilder.build());
         }
     }
 
-    class Instruction {
-        CountDownLatch latch;
-        boolean fireException = false;
-
-        Instruction(CountDownLatch latch) {
-            this.latch = latch;
-        }
-    }
 }

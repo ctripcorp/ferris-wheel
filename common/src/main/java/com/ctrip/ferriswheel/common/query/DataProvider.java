@@ -25,8 +25,6 @@
 
 package com.ctrip.ferriswheel.common.query;
 
-import com.ctrip.ferriswheel.common.util.DataSet;
-
 import java.io.IOException;
 
 public interface DataProvider {
@@ -42,7 +40,10 @@ public interface DataProvider {
      * Execute query.
      *
      * @param query
+     * @param forceRefresh
      * @return
+     * @throws IOException
      */
-    DataSet execute(DataQuery query) throws IOException;
+    QueryResult execute(DataQuery query, boolean forceRefresh) throws IOException;
+
 }
